@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 import '../../models/persona_model.dart';
 import '../../widgets/dreamy_background.dart';
+import '../../widgets/shell/main_shell.dart';
 import '../../providers/persona_provider.dart';
 import '../../providers/auth_provider.dart';
 
@@ -29,8 +30,9 @@ class HomeScreen extends ConsumerWidget {
     final user    = ref.watch(authProvider).user;
     final name    = user?.displayName?.split(' ').first ?? 'you';
 
-    return Scaffold(
-      body: DreamyBackground(
+    return MainShell(
+      currentIndex: 2,
+      child: DreamyBackground(
         child: SafeArea(
           child: Column(
             children: [
@@ -47,7 +49,7 @@ class HomeScreen extends ConsumerWidget {
                           style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary,
                             letterSpacing: 1.5)),
                         ShaderMask(
-                          shaderCallback: (b) => AppTheme.primaryGradient.createShader(b),
+                          shaderCallback: (b) => AppTheme.auroraGradient.createShader(b),
                           child: const Text('Mira',
                             style: TextStyle(fontSize: 28, fontWeight: FontWeight.w200,
                               color: Colors.white, letterSpacing: 4)),
@@ -96,9 +98,7 @@ class HomeScreen extends ConsumerWidget {
                       icon: Icons.phone_outlined,
                       label: 'Call',
                       sublabel: 'Hear her voice',
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF80204A), Color(0xFFFFB7C5)],
-                        begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      gradient: AppTheme.pinkGradient,
                       onTap: () => context.go('/call'),
                     )),
                   ],
@@ -122,13 +122,13 @@ class HomeScreen extends ConsumerWidget {
                     )),
                     const SizedBox(width: 16),
                     Expanded(child: _ActionCard(
-                      icon: Icons.people_outline_rounded,
-                      label: 'Companions',
-                      sublabel: 'Meet others',
+                      icon: Icons.psychology_outlined,
+                      label: 'Memory',
+                      sublabel: 'What she knows',
                       gradient: const LinearGradient(
                         colors: [Color(0xFF1A4020), Color(0xFF98F5C4)],
                         begin: Alignment.topLeft, end: Alignment.bottomRight),
-                      onTap: () {},
+                      onTap: () => context.go('/memory'),
                     )),
                   ],
                 ),
@@ -138,7 +138,7 @@ class HomeScreen extends ConsumerWidget {
 
               // Floating bottom hint
               Padding(
-                padding: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.only(bottom: 110),
                 child: Text('she\'s waiting for you  ✦',
                   style: TextStyle(fontSize: 12, color: AppTheme.textSecondary.withOpacity(0.6),
                     letterSpacing: 2)),
