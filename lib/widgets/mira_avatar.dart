@@ -95,9 +95,12 @@ class _MiraAvatarWidgetState extends ConsumerState<MiraAvatarWidget> {
     });
 
     if (!_loaded || _artboard == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const SizedBox.shrink();
     }
 
-    return Rive(artboard: _artboard!, fit: BoxFit.contain);
+    // Use BoxFit.cover so the character fills whatever container it's
+    // placed in. Callers control the visible area via their own
+    // Positioned / SizedBox constraints.
+    return Rive(artboard: _artboard!, fit: BoxFit.cover);
   }
 }

@@ -58,11 +58,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final chatState = ref.watch(chatProvider);
     final personaState = ref.watch(personaProvider);
     final screenWidth = MediaQuery.of(context).size.width;
-    // Character takes the right ~38% of the screen on wide screens.
-    // On narrow screens (<700px) we hide it automatically — not enough
-    // room for both character and chat.
-    final showCharacter =
-        _characterVisible && screenWidth > 700;
+    // Only show character on wide screens (mobile gets full-width chat)
+    final showCharacter = _characterVisible && screenWidth > 700;
 
     return MainShell(
       currentIndex: 0,
@@ -85,28 +82,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ),
           ),
 
-          // ── Layer 2: Character on the RIGHT side ────────────────────────
+          // ── Layer 2: Character on the RIGHT, fills its column ───────────
+          // Use Align + FractionallySizedBox so the Rive widget has a
+          // definite size to render into. BoxFit.cover inside MiraAvatarWidget
+          // would crop, so we let it contain but constrain the box itself.
           if (showCharacter)
             Positioned(
               right: 0,
               top: 0,
               bottom: 0,
-              width: screenWidth * 0.38,
-              child: IgnorePointer(
-                child: ClipRect(
-                  child: OverflowBox(
-                    minWidth: screenWidth * 0.5,
-                    maxWidth: screenWidth * 0.5,
-                    minHeight: double.infinity,
-                    maxHeight: double.infinity,
-                    alignment: Alignment.center,
-                    child: const MiraAvatarWidget(),
-                  ),
+              child: SizedBox(
+                width: screenWidth * 0.42,
+                child: IgnorePointer(
+                  child: const MiraAvatarWidget(),
                 ),
               ),
             ),
 
-          // ── Layer 3: Left-biased gradient overlay for readability ───────
+          // ── Layer 3: Soft left-biased gradient overlay ──────────────────
+          // Lighter than before — just enough to keep chat readable on
+          // the left while the character shows through on the right.
           if (showCharacter)
             Positioned.fill(
               child: IgnorePointer(
@@ -114,13 +109,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        AppTheme.midnightBlue,
-                        AppTheme.midnightBlue.withOpacity(0.95),
-                        AppTheme.midnightBlue.withOpacity(0.7),
-                        AppTheme.midnightBlue.withOpacity(0.2),
+                        AppTheme.midnightBlue.withOpacity(0.92),
+                        AppTheme.midnightBlue.withOpacity(0.55),
                         Colors.transparent,
                       ],
-                      stops: const [0.0, 0.35, 0.55, 0.7, 0.85],
+                      stops: const [0.0, 0.55, 0.85],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),
@@ -129,11 +122,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
 
-          // ── Layer 4: Full-width chat UI ─────────────────────────────────
+          // ── Layer 4: Chat UI (full width) ───────────────────────────────
           SafeArea(
             child: Column(
               children: [
-                // Beautiful glass header
+                // Floating header — NO border, just content on a soft blur
                 _ChatHeader(
                   personaName: personaState.persona.name,
                   isTyping: chatState.isTyping,
@@ -142,7 +135,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       () => _characterVisible = !_characterVisible),
                 ),
 
-                // Chat messages — full width, bubbles constrained internally
+                // Chat messages — full width
                 Expanded(
                   child: ListView.builder(
                     controller: _scrollController,
@@ -169,7 +162,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                 ),
 
-                // Streaming content
                 if (chatState.streamingContent.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -253,7 +245,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 }
 
-// ── Beautiful glass header ──────────────────────────────────────────────
+// ── Beautiful floating header (no border) ───────────────────────────────
 
 class _ChatHeader extends StatelessWidget {
   final String personaName;
@@ -271,144 +263,124 @@ class _ChatHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                  color: Colors.white.withOpacity(0.12)),
-            ),
-            child: Row(
-              children: [
-                // Avatar circle with online dot
-                Stack(
-                  children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: AppTheme.pinkGradient,
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                AppTheme.magentaAccent.withOpacity(0.3),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.auto_awesome,
-                          color: Colors.white, size: 18),
-                    ),
-                    // Online dot
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppTheme.successGreen,
-                          border: Border.all(
-                              color: AppTheme.midnightBlue, width: 2),
-                        ),
-                      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Row(
+        children: [
+          // Avatar circle with online dot
+          Stack(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppTheme.pinkGradient,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.magentaAccent.withOpacity(0.35),
+                      blurRadius: 12,
+                      spreadRadius: 1,
                     ),
                   ],
                 ),
-                const SizedBox(width: 12),
-
-                // Name + status
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(personaName,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: AppTheme.moonWhite,
-                            letterSpacing: 1,
-                          )),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          if (isTyping) ...[
-                            const _TypingDots(),
-                            const SizedBox(width: 6),
-                            Text('typing...',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppTheme.moonRose
-                                      .withOpacity(0.9),
-                                  fontStyle: FontStyle.italic,
-                                )),
-                          ] else ...[
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: AppTheme.successGreen,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text('online',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppTheme.textSecondary
-                                      .withOpacity(0.8),
-                                  letterSpacing: 0.5,
-                                )),
-                          ],
-                        ],
-                      ),
-                    ],
+                child: const Icon(Icons.auto_awesome,
+                    color: Colors.white, size: 20),
+              ),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  width: 13,
+                  height: 13,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.successGreen,
+                    border: Border.all(
+                        color: AppTheme.midnightBlue, width: 2.5),
                   ),
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
 
-                // Toggle character visibility
-                if (MediaQuery.of(context).size.width > 700)
-                  GestureDetector(
-                    onTap: onToggleCharacter,
-                    child: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: Colors.white.withOpacity(0.15)),
+          // Name + status
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(personaName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.moonWhite,
+                      letterSpacing: 1,
+                    )),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    if (isTyping) ...[
+                      const _TypingDots(),
+                      const SizedBox(width: 6),
+                      Text('typing...',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color:
+                                AppTheme.moonRose.withOpacity(0.9),
+                            fontStyle: FontStyle.italic,
+                          )),
+                    ] else ...[
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppTheme.successGreen,
+                        ),
                       ),
-                      child: Icon(
-                        characterVisible
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        color: AppTheme.textSecondary,
-                        size: 16,
-                      ),
-                    ),
-                  ),
+                      const SizedBox(width: 6),
+                      Text('online',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textSecondary
+                                .withOpacity(0.8),
+                            letterSpacing: 0.5,
+                          )),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
-        ),
+
+          // Toggle character visibility (only on wide screens)
+          if (MediaQuery.of(context).size.width > 700)
+            GestureDetector(
+              onTap: onToggleCharacter,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  characterVisible
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: AppTheme.textSecondary,
+                  size: 16,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 }
 
-/// Three pulsing dots for the 'typing...' indicator in the header.
+/// Three pulsing dots for the 'typing...' indicator.
 class _TypingDots extends StatelessWidget {
   const _TypingDots();
 
@@ -431,4 +403,3 @@ class _TypingDots extends StatelessWidget {
     );
   }
 }
-

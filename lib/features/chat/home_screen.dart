@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 import '../../models/persona_model.dart';
 import '../../widgets/dreamy_background.dart';
+import '../../widgets/mira_avatar.dart';
 import '../../widgets/shell/main_shell.dart';
 import '../../providers/persona_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -45,7 +46,7 @@ class HomeScreen extends ConsumerWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('hello, $name',
+                        Text('Hello, $name',
                           style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary,
                             letterSpacing: 1.5)),
                         ShaderMask(
@@ -205,18 +206,23 @@ class _CompanionCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Avatar circle
+              // Avatar circle with live Rive character
               Container(
                 width: 72, height: 72,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: AppTheme.primaryGradient,
+                  gradient: AppTheme.pinkGradient,
                   boxShadow: [
-                    BoxShadow(color: AppTheme.softLavender.withOpacity(0.4),
+                    BoxShadow(color: AppTheme.magentaAccent.withOpacity(0.4),
                       blurRadius: 20, spreadRadius: 2),
                   ],
                 ),
-                child: const Icon(Icons.face_retouching_natural, color: Colors.white, size: 36),
+                child: ClipOval(
+                  child: Container(
+                    color: AppTheme.midnightBlue,
+                    child: const MiraAvatarWidget(),
+                  ),
+                ),
               ),
               const SizedBox(width: 20),
               Expanded(
