@@ -21,17 +21,17 @@ final routerProvider = Provider.family<GoRouter, bool>((ref, isAuthenticated) {
     initialLocation: '/',
     redirect: (context, state) {
       final onboardingComplete = ref.read(onboardingCompleteProvider);
-      final isOnboardingRoute = state.matchedLocation.startsWith('/onboarding');
-      final isAuthRoute = state.matchedLocation.startsWith('/auth');
+      final loc = state.matchedLocation;
+      final isOnboardingRoute = loc.startsWith('/onboarding');
+      final isAuthRoute = loc.startsWith('/auth');
+      final isSplashRoute = loc == '/';
+
+      // Splash is always allowed — never redirect away from it.
+      // Splash handles its own navigation after the branding delay.
+      if (isSplashRoute) return null;
 
       if (!isAuthenticated && !isAuthRoute && !isOnboardingRoute) {
         return '/auth/login';
-      }
-      // Authenticated users land on the Chat tab (the new home),
-      // not the companion card screen.
-      if (isAuthenticated && state.matchedLocation == '/') {
-        if (!onboardingComplete) return '/onboarding';
-        return '/chat';
       }
       if (isAuthenticated && isAuthRoute) {
         if (!onboardingComplete) return '/onboarding';

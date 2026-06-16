@@ -21,7 +21,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
-  bool _showAvatar = true;
+  bool _characterVisible = true;
 
   @override
   void dispose() {
@@ -60,70 +60,128 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return MainShell(
       currentIndex: 0,
-      child: DreamyBackground(
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Top bar
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Row(
-                  children: [
-                    // Online dot + name
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppTheme.successGreen,
-                      ),
+      child: Stack(
+        children: [
+          // ── Layer 1: Full-screen Rive character background ──────────────
+          // The character fills the entire screen behind everything else.
+          if (_characterVisible)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFF0A0518),
+                        Color(0xFF1A0B2E),
+                        Color(0xFF0D0820),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                     ),
-                    const SizedBox(width: 8),
-                    Text(personaState.persona.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w300,
-                        color: AppTheme.moonWhite,
-                        letterSpacing: 1.5,
-                      )),
-                    const Spacer(),
-                    // Toggle avatar visibility (collapse to focus on chat)
-                    GestureDetector(
-                      onTap: () => setState(() => _showAvatar = !_showAvatar),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: AppTheme.glassWhite,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppTheme.glassBorder),
-                        ),
-                        child: Icon(
-                          _showAvatar
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                          color: AppTheme.textSecondary,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
+                  child: MiraAvatarWidget(),
                 ),
               ),
+            ),
 
-              // Chat + avatar area
-              Expanded(
-                child: Row(
-                  children: [
-                    // Chat column
-                    Expanded(
-                      flex: _showAvatar ? 3 : 1,
+          // ── Layer 2: Dark gradient overlay for readability ──────────────
+          // Left-biased gradient so chat bubbles on the left stay readable
+          // while the character remains visible on the right.
+          if (_characterVisible)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.midnightBlue.withOpacity(0.92),
+                        AppTheme.midnightBlue.withOpacity(0.6),
+                        AppTheme.midnightBlue.withOpacity(0.3),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.4, 0.7, 1.0],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ── Layer 3: Chat UI on top ─────────────────────────────────────
+          SafeArea(
+            child: Column(
+              children: [
+                // Top bar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Row(
+                    children: [
+                      // Online dot + name
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppTheme.successGreen,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(personaState.persona.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w300,
+                          color: AppTheme.moonWhite,
+                          letterSpacing: 1.5,
+                        )),
+                      const SizedBox(width: 8),
+                      Text('online',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.textSecondary.withOpacity(0.7),
+                          letterSpacing: 1)),
+                      const Spacer(),
+                      // Toggle character visibility
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => _characterVisible = !_characterVisible),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: AppTheme.glassWhite,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppTheme.glassBorder),
+                          ),
+                          child: Icon(
+                            _characterVisible
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: AppTheme.textSecondary,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Chat messages — left-aligned panel
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      // Constrain chat to ~55% width on wide screens so the
+                      // character remains visible on the right. On narrow
+                      // screens (mobile), it fills the width.
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.only(
-                          top: 8, bottom: 8, left: 12, right: 12),
-                        itemCount:
-                            chatState.messages.length + (chatState.isTyping ? 1 : 0),
+                          top: 8, bottom: 8, left: 8, right: 8),
+                        itemCount: chatState.messages.length +
+                            (chatState.isTyping ? 1 : 0),
                         itemBuilder: (context, index) {
                           if (index == chatState.messages.length &&
                               chatState.isTyping) {
@@ -140,50 +198,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         },
                       ),
                     ),
-                    // Avatar column (Rive character)
-                    if (_showAvatar) ...[
-                      Expanded(
-                        flex: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const SizedBox(height: 60),
-                              const Expanded(
-                                child: MiraAvatarWidget(),
-                              ),
-                              const SizedBox(height: 60),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              // Streaming content (assistant message being received)
-              if (chatState.streamingContent.isNotEmpty)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: ChatBubble(
-                    message: chatState.streamingContent,
-                    isUser: false,
-                    time: DateFormat('h:mm a').format(DateTime.now()),
                   ),
                 ),
 
-              if (chatState.error != null)
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(chatState.error!,
-                    style: const TextStyle(color: AppTheme.errorRed))),
+                // Streaming content
+                if (chatState.streamingContent.isNotEmpty)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: ChatBubble(
+                          message: chatState.streamingContent,
+                          isUser: false,
+                          time: DateFormat('h:mm a').format(DateTime.now()),
+                        ),
+                      ),
+                    ),
+                  ),
 
-              _buildInputArea(),
-            ],
+                if (chatState.error != null)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(chatState.error!,
+                      style: const TextStyle(color: AppTheme.errorRed))),
+
+                _buildInputArea(),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -192,50 +237,57 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
-        child: Row(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.glassWhite,
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: AppTheme.glassBorder),
-                ),
-                child: TextField(
-                  controller: _messageController,
-                  style: const TextStyle(color: AppTheme.textPrimary),
-                  decoration: const InputDecoration(
-                    hintText: 'Type a message...',
-                    hintStyle: TextStyle(color: AppTheme.mistGray, fontSize: 14),
-                    border: InputBorder.none,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.glassWhite,
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: AppTheme.glassBorder),
+                    ),
+                    child: TextField(
+                      controller: _messageController,
+                      style: const TextStyle(color: AppTheme.textPrimary),
+                      decoration: const InputDecoration(
+                        hintText: 'Type a message...',
+                        hintStyle:
+                            TextStyle(color: AppTheme.mistGray, fontSize: 14),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 14),
+                      ),
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
                   ),
-                  onSubmitted: (_) => _sendMessage(),
                 ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppTheme.pinkGradient,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x66E83E8C),
-                    blurRadius: 16,
-                    offset: Offset(0, 4),
+                const SizedBox(width: 10),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: AppTheme.pinkGradient,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x66E83E8C),
+                        blurRadius: 16,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                onPressed: _sendMessage,
-              ),
+                  child: IconButton(
+                    icon: const Icon(Icons.send, color: Colors.white, size: 20),
+                    onPressed: _sendMessage,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -29,7 +30,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     )..forward();
     _fade = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
 
-    // 0 -> 1 over 2.4s, then navigate
     _progressController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2400),
@@ -40,8 +40,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       _progressController.forward();
     });
 
+    // After the splash branding delay, navigate based on auth state.
+    // FirebaseAuth.instance.currentUser is synchronous after the first
+    // persistence restore, so this is safe to check here.
     Future.delayed(const Duration(milliseconds: 2800), () {
-      if (mounted) context.go('/auth/login');
+      if (!mounted) return;
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        context.go('/chat');
+      } else {
+        context.go('/auth/login');
+      }
     });
   }
 

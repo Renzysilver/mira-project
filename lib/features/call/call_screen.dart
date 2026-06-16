@@ -131,7 +131,30 @@ class _CallScreenState extends ConsumerState<CallScreen>
                 Text(personaState.persona.personalityType.name,
                   style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, letterSpacing: 1.5)),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
+
+                // "Mira is speaking..." status text
+                _CallStatusText(
+                  phase: callState.phase,
+                  personaName: personaState.persona.name,
+                ),
+
+                const SizedBox(height: 12),
+
+                // Waveform visualization
+                if (callState.status == CallStatus.connected)
+                  _CallWaveform(
+                    phase: callState.phase,
+                    controller: _particleController,
+                  ),
+
+                const SizedBox(height: 16),
+
+                // Three phase chips row: Listening / Thinking / Speaking
+                if (callState.status == CallStatus.connected)
+                  _PhaseChipsRow(activePhase: callState.phase),
+
+                const SizedBox(height: 24),
 
                 // Speech transcript bubble
                 if (callState.lastAiSpeech.isNotEmpty || callState.lastUserSpeech.isNotEmpty)
@@ -493,4 +516,161 @@ class _ParticlePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ParticlePainter old) => old.t != t;
+}
+
+// ── New call-screen polish widgets ──────────────────────────────────────
+
+/// "Mira is speaking..." / "Listening to you..." / "Thinking..." status text.
+class _CallStatusText extends StatelessWidget {
+  final CallPhase phase;
+  final String personaName;
+  const _CallStatusText({required this.phase, required this.personaName});
+
+  @override
+  Widget build(BuildContext context) {
+    final (text, color) = switch (phase) {
+      CallPhase.dialing   => ('Calling $personaName...', AppTheme.auroraBlue),
+      CallPhase.listening => ('Listening to you...', AppTheme.successGreen),
+      CallPhase.thinking  => ('$personaName is thinking...', AppTheme.accentGold),
+      CallPhase.speaking  => ('$personaName is speaking...', AppTheme.moonRose),
+    };
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: Text(text,
+        key: ValueKey(text),
+        style: TextStyle(
+          fontSize: 13,
+          color: color.withOpacity(0.9),
+          letterSpacing: 1.5,
+          fontStyle: FontStyle.italic,
+        )),
+    );
+  }
+}
+
+/// Animated waveform — bars that bounce when speaking, flat when not.
+class _CallWaveform extends StatelessWidget {
+  final CallPhase phase;
+  final Animation<double> controller;
+  const _CallWaveform({required this.phase, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = phase == CallPhase.speaking || phase == CallPhase.listening;
+    return SizedBox(
+      width: 180,
+      height: 32,
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (_, __) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: List.generate(11, (i) {
+              final t = controller.value;
+              // Each bar has a phase offset based on its index.
+              final phaseShift = i * 0.5;
+              final baseHeight = 6.0;
+              final amplitude = isActive ? 18.0 : 0.0;
+              final wave =
+                  (sin((t * 2 * pi) + phaseShift) * 0.5 + 0.5) * amplitude;
+              final h = baseHeight + wave;
+              final color = phase == CallPhase.speaking
+                  ? AppTheme.moonRose
+                  : phase == CallPhase.listening
+                      ? AppTheme.successGreen
+                      : AppTheme.textSecondary.withOpacity(0.4);
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                width: 3,
+                height: h,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              );
+            }),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Three phase chips: Listening / Thinking / Speaking — active one highlighted.
+class _PhaseChipsRow extends StatelessWidget {
+  final CallPhase activePhase;
+  const _PhaseChipsRow({required this.activePhase});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _PhaseMiniChip(
+          label: 'Listening',
+          icon: Icons.hearing_outlined,
+          color: AppTheme.successGreen,
+          isActive: activePhase == CallPhase.listening,
+        ),
+        const SizedBox(width: 10),
+        _PhaseMiniChip(
+          label: 'Thinking',
+          icon: Icons.psychology_outlined,
+          color: AppTheme.accentGold,
+          isActive: activePhase == CallPhase.thinking,
+        ),
+        const SizedBox(width: 10),
+        _PhaseMiniChip(
+          label: 'Speaking',
+          icon: Icons.record_voice_over_outlined,
+          color: AppTheme.moonRose,
+          isActive: activePhase == CallPhase.speaking,
+        ),
+      ],
+    );
+  }
+}
+
+class _PhaseMiniChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool isActive;
+  const _PhaseMiniChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.isActive,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isActive ? color.withOpacity(0.2) : Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isActive ? color : Colors.white.withOpacity(0.1),
+          width: isActive ? 1.5 : 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: isActive ? color : AppTheme.textSecondary),
+          const SizedBox(width: 4),
+          Text(label,
+            style: TextStyle(
+              fontSize: 10,
+              color: isActive ? color : AppTheme.textSecondary,
+              letterSpacing: 0.8,
+              fontWeight: isActive ? FontWeight.w500 : FontWeight.w400,
+            )),
+        ],
+      ),
+    );
+  }
 }
