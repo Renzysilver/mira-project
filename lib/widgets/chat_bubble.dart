@@ -23,10 +23,9 @@ class ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use the parent container's width, not the screen's. The chat panel
-    // is constrained to ~560px so 80% of that is a sensible bubble width.
-    final parentWidth = MediaQuery.sizeOf(context).width;
-    final bubbleMaxWidth = (parentWidth * 0.6).clamp(220.0, 420.0);
+    // Chat panel is now full-width, so bubbles should be constrained to
+    // a comfortable reading width regardless of screen size.
+    final bubbleMaxWidth = 440.0;
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
