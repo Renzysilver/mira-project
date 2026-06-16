@@ -79,10 +79,10 @@ class GlowButton extends StatelessWidget {
       height: 54,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
-        gradient: AppTheme.primaryGradient,
+        gradient: AppTheme.pinkGradient,
         boxShadow: [
           BoxShadow(
-            color: AppTheme.softLavender.withOpacity(0.4),
+            color: AppTheme.magentaAccent.withOpacity(0.4),
             blurRadius: 20,
             offset: const Offset(0, 6),
           ),

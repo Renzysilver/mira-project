@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -60,8 +61,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   children: [
                     const SizedBox(height: 60),
 
+                    // Cherry blossom icon
+                    const _BlossomIcon(size: 48),
+                    const SizedBox(height: 24),
+
                     ShaderMask(
-                      shaderCallback: (b) => AppTheme.primaryGradient.createShader(b),
+                      shaderCallback: (b) => AppTheme.auroraGradient.createShader(b),
                       child: const Text('Mira',
                         style: TextStyle(fontSize: 52, fontWeight: FontWeight.w200,
                           color: Colors.white, letterSpacing: 8)),
@@ -79,6 +84,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           const Text('Welcome Back',
                             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w300,
                               color: AppTheme.moonWhite, letterSpacing: 1),
+                            textAlign: TextAlign.center),
+                          const SizedBox(height: 6),
+                          const Text("I've been waiting for you.",
+                            style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic,
+                              color: AppTheme.textSecondary, letterSpacing: 0.5),
                             textAlign: TextAlign.center),
                           const SizedBox(height: 28),
 
@@ -149,4 +159,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       ),
     );
   }
+}
+
+/// Stylised cherry blossom icon — five soft pink petals around a magenta
+/// center. Used on auth screens as the brand mark.
+class _BlossomIcon extends StatelessWidget {
+  final double size;
+  const _BlossomIcon({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _BlossomPainter(size)),
+    );
+  }
+}
+
+class _BlossomPainter extends CustomPainter {
+  final double size;
+  _BlossomPainter(this.size);
+
+  @override
+  void paint(Canvas canvas, Size canvasSize) {
+    final center = Offset(canvasSize.width / 2, canvasSize.height / 2);
+    final petalRadius = canvasSize.width * 0.22;
+    final distance = canvasSize.width * 0.22;
+
+    final petalPaint = Paint()
+      ..color = AppTheme.moonRose
+      ..style = PaintingStyle.fill;
+
+    final centerPaint = Paint()
+      ..color = AppTheme.magentaAccent
+      ..style = PaintingStyle.fill;
+
+    for (int i = 0; i < 5; i++) {
+      final angle = (i / 5) * 2 * 3.14159265 - 3.14159265 / 2;
+      final dx = center.dx + distance * cos(angle);
+      final dy = center.dy + distance * sin(angle);
+      canvas.drawCircle(Offset(dx, dy), petalRadius, petalPaint);
+    }
+    canvas.drawCircle(center, canvasSize.width * 0.08, centerPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

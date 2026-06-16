@@ -2,39 +2,55 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class AppTheme {
-  // Dreamy anime palette
+  // ── Dreamy anime palette ──────────────────────────────────────────────
+  // Deep cosmic background
   static const Color midnightBlue   = Color(0xFF080B18);
   static const Color deepViolet     = Color(0xFF12082A);
+  static const Color deepNavy       = Color(0xFF0A0A1A);
+
+  // Pink-magenta accent system (primary brand accent in the new design)
+  static const Color sakuraPink     = Color(0xFFFFD4E8); // soft highlight
+  static const Color moonRose       = Color(0xFFFFB7C5); // mid-pink
+  static const Color magentaAccent  = Color(0xFFE83E8C); // primary CTA pink
+  static const Color magentaDeep    = Color(0xFFC2185B); // pressed state
+
+  // Purple companions
   static const Color softLavender   = Color(0xFFC9A7FF);
-  static const Color moonRose       = Color(0xFFFFB7C5);
-  static const Color sakuraPink     = Color(0xFFFFD4E8);
+  static const Color primaryPurple  = Color(0xFF9B6DFF);
+  static const Color deepPurple     = Color(0xFF5A189A);
+
+  // Neutrals
   static const Color moonWhite      = Color(0xFFF0E6FF);
   static const Color auroraBlue     = Color(0xFFA7C4FF);
   static const Color mistGray       = Color(0xFF4A4A6A);
+  static const Color textSecondary  = Color(0xFFB8B8C8);
+
+  // Glass
   static const Color glassWhite     = Color(0x1AFFFFFF);
   static const Color glassBorder    = Color(0x33FFFFFF);
+  static const Color glassDark      = Color(0xF00F0F2A);
+
+  // Status
+  static const Color errorRed       = Color(0xFFFF6B8A);
+  static const Color successGreen   = Color(0xFF98F5C4);
 
   // Legacy aliases so existing code compiles unchanged
-  static const Color primaryPurple  = Color(0xFF9B6DFF);
-  static const Color primaryPink    = Color(0xFFFFB7C5);
-  static const Color accentCyan     = Color(0xFFA7C4FF);
+  static const Color primaryPink    = moonRose;
+  static const Color accentCyan     = auroraBlue;
   static const Color accentGold     = Color(0xFFFFE4A0);
   static const Color backgroundDark = midnightBlue;
   static const Color surfaceDark    = Color(0xFF1A1035);
   static const Color surfaceLight   = Color(0xFF2A1F50);
   static const Color textPrimary    = moonWhite;
-  static const Color textSecondary  = Color(0xFFAA99CC);
-  static const Color errorRed       = Color(0xFFFF6B8A);
-  static const Color successGreen   = Color(0xFF98F5C4);
 
   static ThemeData get darkTheme {
     return ThemeData(
       brightness: Brightness.dark,
-      primaryColor: primaryPurple,
+      primaryColor: magentaAccent,
       scaffoldBackgroundColor: midnightBlue,
       fontFamily: 'serif',
       colorScheme: const ColorScheme.dark(
-        primary: primaryPurple,
+        primary: magentaAccent,
         secondary: moonRose,
         surface: surfaceDark,
         error: errorRed,
@@ -86,7 +102,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: softLavender, width: 1.5),
+          borderSide: const BorderSide(color: magentaAccent, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
         hintStyle: const TextStyle(color: mistGray, fontSize: 14),
@@ -102,14 +118,30 @@ class AppTheme {
     );
   }
 
+  // ── Gradients ─────────────────────────────────────────────────────────
   static const LinearGradient backgroundGradient = LinearGradient(
     colors: [midnightBlue, deepViolet, Color(0xFF1A0A2E)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
 
+  /// Cosmic aurora gradient — purple-to-pink, used for splash and feature
+  /// backgrounds. Matches the mockup's signature look.
+  static const LinearGradient auroraGradient = LinearGradient(
+    colors: [deepPurple, magentaAccent],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [softLavender, moonRose],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Pink CTA gradient — primary buttons in the new design.
+  static const LinearGradient pinkGradient = LinearGradient(
+    colors: [magentaAccent, magentaDeep],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
