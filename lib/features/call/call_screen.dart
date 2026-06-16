@@ -128,7 +128,7 @@ class _CallScreenState extends ConsumerState<CallScreen>
                   style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w200,
                     color: AppTheme.moonWhite, letterSpacing: 3)),
                 const SizedBox(height: 6),
-                Text(personaState.persona.personalityType ?? '',
+                Text(personaState.persona.personalityType.name,
                   style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, letterSpacing: 1.5)),
 
                 const SizedBox(height: 32),
@@ -265,10 +265,10 @@ class _AvatarWithGlow extends StatelessWidget {
               color: glowColor.withOpacity(0.05),
             ),
           ),
-          // Avatar
+          // Avatar — speaking state is driven via isMiraSpeakingProvider
           SizedBox(
             width: 160, height: 160,
-            child: MiraAvatar(isSpeaking: isSpeaking, size: 160),
+            child: MiraAvatarWidget(),
           ),
         ],
       ),

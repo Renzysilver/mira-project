@@ -7,6 +7,12 @@ import '../../providers/settings_provider.dart';
 import '../../app/theme.dart';
 import '../../widgets/avatar_switcher_widget.dart';
 
+/// Resolves a thumb color that's [activeColor] when the switch is selected.
+/// Replaces the removed `activeThumbColor` parameter.
+WidgetStateProperty<Color?> _activeThumb(Color activeColor) =>
+    WidgetStateProperty.resolveWith<Color?>((states) =>
+        states.contains(WidgetState.selected) ? activeColor : null);
+
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -26,26 +32,26 @@ class SettingsScreen extends ConsumerWidget {
               subtitle: const Text('Enable romantic responses', style: TextStyle(color: AppTheme.textSecondary)),
               value: personaState.persona.flirtEnabled,
               onChanged: (_) => ref.read(personaProvider.notifier).toggleFlirtMode(),
-              activeThumbColor: AppTheme.primaryPurple,
+              thumbColor: _activeThumb(AppTheme.primaryPurple),
             ),
             SwitchListTile(
               title: const Text('Friendship Mode', style: TextStyle(color: AppTheme.textPrimary)),
               subtitle: const Text('Keep conversations platonic', style: TextStyle(color: AppTheme.textSecondary)),
               value: personaState.persona.friendshipMode,
               onChanged: (_) => ref.read(personaProvider.notifier).toggleFriendshipMode(),
-              activeThumbColor: AppTheme.primaryPurple,
+              thumbColor: _activeThumb(AppTheme.primaryPurple),
             ),
             SwitchListTile(
               title: const Text('Notifications', style: TextStyle(color: AppTheme.textPrimary)),
               value: settings['notifications'] ?? true,
               onChanged: (v) => ref.read(settingsProvider.notifier).updateSetting('notifications', v),
-              activeThumbColor: AppTheme.primaryPurple,
+              thumbColor: _activeThumb(AppTheme.primaryPurple),
             ),
             SwitchListTile(
               title: const Text('AI Voice Responses', style: TextStyle(color: AppTheme.textPrimary)),
               value: settings['aiVoice'] ?? true,
               onChanged: (v) => ref.read(settingsProvider.notifier).updateSetting('aiVoice', v),
-              activeThumbColor: AppTheme.primaryPurple,
+              thumbColor: _activeThumb(AppTheme.primaryPurple),
             ),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),

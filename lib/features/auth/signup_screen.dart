@@ -1,11 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/dreamy_background.dart';
+import '../../widgets/auth/dreamy_form_widgets.dart';
 import '../../app/theme.dart';
-import 'login_screen.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -71,7 +70,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
                       style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, letterSpacing: 3)),
                     const SizedBox(height: 48),
 
-                    _GlassCard(
+                    GlassCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -81,21 +80,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
                             textAlign: TextAlign.center),
                           const SizedBox(height: 24),
 
-                          _DreamyTextField(
+                          DreamyTextField(
                             controller: _nameController,
                             hint: 'Your name',
                             icon: Icons.person_outline_rounded,
                             validator: (v) => v!.isEmpty ? 'Enter your name' : null,
                           ),
                           const SizedBox(height: 14),
-                          _DreamyTextField(
+                          DreamyTextField(
                             controller: _emailController,
                             hint: 'Email',
                             icon: Icons.mail_outline_rounded,
                             validator: (v) => v!.isEmpty ? 'Enter email' : null,
                           ),
                           const SizedBox(height: 14),
-                          _DreamyTextField(
+                          DreamyTextField(
                             controller: _passwordController,
                             hint: 'Password',
                             icon: Icons.lock_outline_rounded,
@@ -109,7 +108,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
                           ),
                           const SizedBox(height: 28),
 
-                          _GlowButton(
+                          GlowButton(
                             text: 'Create Account',
                             isLoading: authState.isLoading,
                             onPressed: () {
@@ -128,7 +127,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
 
                     const SizedBox(height: 28),
                     GestureDetector(
-                      onTap: () => context.go('/login'),
+                      onTap: () => context.go('/auth/login'),
                       child: RichText(
                         text: TextSpan(
                           text: 'Already have an account?  ',

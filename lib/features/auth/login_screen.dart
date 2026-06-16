@@ -1,9 +1,9 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/dreamy_background.dart';
+import '../../widgets/auth/dreamy_form_widgets.dart';
 import '../../app/theme.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -59,7 +59,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   children: [
                     const SizedBox(height: 60),
 
-                    // Logo / title
                     ShaderMask(
                       shaderCallback: (b) => AppTheme.primaryGradient.createShader(b),
                       child: const Text('Mira',
@@ -72,8 +71,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         letterSpacing: 3)),
                     const SizedBox(height: 64),
 
-                    // Glass card
-                    _GlassCard(
+                    GlassCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -83,14 +81,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             textAlign: TextAlign.center),
                           const SizedBox(height: 28),
 
-                          _DreamyTextField(
+                          DreamyTextField(
                             controller: _emailController,
                             hint: 'Email',
                             icon: Icons.mail_outline_rounded,
                             validator: (v) => v!.isEmpty ? 'Enter email' : null,
                           ),
                           const SizedBox(height: 16),
-                          _DreamyTextField(
+                          DreamyTextField(
                             controller: _passwordController,
                             hint: 'Password',
                             icon: Icons.lock_outline_rounded,
@@ -104,7 +102,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           ),
                           const SizedBox(height: 28),
 
-                          _GlowButton(
+                          GlowButton(
                             text: 'Sign In',
                             isLoading: authState.isLoading,
                             onPressed: () {
@@ -116,10 +114,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           ),
                           const SizedBox(height: 16),
 
-                          _DividerRow(),
+                          const DividerRow(),
                           const SizedBox(height: 16),
 
-                          _GoogleButton(onPressed: () =>
+                          GoogleButton(onPressed: () =>
                               ref.read(authProvider.notifier).signInWithGoogle()),
                         ],
                       ),
@@ -147,126 +145,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ── Shared dreamy widgets ──────────────────────────────────────────────────
-
-class _GlassCard extends StatelessWidget {
-  final Widget child;
-  const _GlassCard({required this.child});
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.white.withOpacity(0.15), width: 1),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-class _DreamyTextField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final IconData icon;
-  final bool obscure;
-  final Widget? suffixIcon;
-  final String? Function(String?)? validator;
-
-  const _DreamyTextField({
-    required this.controller, required this.hint, required this.icon,
-    this.obscure = false, this.suffixIcon, this.validator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscure,
-      validator: validator,
-      style: const TextStyle(color: AppTheme.moonWhite, fontSize: 14),
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: Icon(icon, color: AppTheme.softLavender, size: 20),
-        suffixIcon: suffixIcon,
-      ),
-    );
-  }
-}
-
-class _GlowButton extends StatelessWidget {
-  final String text;
-  final bool isLoading;
-  final VoidCallback onPressed;
-  const _GlowButton({required this.text, required this.isLoading, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 54,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: AppTheme.primaryGradient,
-        boxShadow: [
-          BoxShadow(color: AppTheme.softLavender.withOpacity(0.4),
-            blurRadius: 20, offset: const Offset(0, 6)),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-        ),
-        child: isLoading
-            ? const SizedBox(width: 20, height: 20,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-            : Text(text, style: const TextStyle(fontSize: 15, letterSpacing: 2,
-                fontWeight: FontWeight.w400, color: Colors.white)),
-      ),
-    );
-  }
-}
-
-class _DividerRow extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Row(children: [
-      Expanded(child: Divider(color: Colors.white.withOpacity(0.15))),
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Text('or', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12))),
-      Expanded(child: Divider(color: Colors.white.withOpacity(0.15))),
-    ]);
-  }
-}
-
-class _GoogleButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _GoogleButton({required this.onPressed});
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(Icons.g_mobiledata_rounded, color: AppTheme.moonRose, size: 24),
-      label: const Text('Continue with Google',
-        style: TextStyle(color: AppTheme.moonWhite, fontSize: 13, letterSpacing: 0.5)),
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size(double.infinity, 52),
-        side: BorderSide(color: Colors.white.withOpacity(0.2)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
       ),
     );
   }

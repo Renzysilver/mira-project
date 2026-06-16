@@ -79,11 +79,10 @@ class _MiraAvatarWidgetState extends ConsumerState<MiraAvatarWidget> {
 
   @override
   void dispose() {
-    // Both controllers are owned by the artboard — disposing the artboard
-    // disposes them too. We null our refs to make intent explicit.
+    // Dispose the controllers we own. The Artboard itself is GC'd when no
+    // longer referenced — Rive's Artboard class does not expose dispose().
     _stateMachine?.dispose();
     _talking = null;
-    _artboard?.dispose();
     super.dispose();
   }
 
