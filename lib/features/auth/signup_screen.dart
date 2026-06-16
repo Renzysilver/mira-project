@@ -40,6 +40,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     ref.listen<AuthState>(authProvider, (_, next) {
+      if (!mounted) return; // navigation may have disposed us already
       if (next.error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(next.error!), backgroundColor: AppTheme.errorRed));

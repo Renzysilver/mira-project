@@ -222,7 +222,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final uid = state.user?.uid;
     if (uid == null) return;
     try {
-      await _firestore.collection('users').doc(uid).update({'onboardingComplete': true});
+      // Use set+merge instead of update so we don't fail if the anchor doc
+      // doesn't exist yet (race between authStateChanges and the signup .set()).
+      await _firestore.collection('users').doc(uid).set(
+        {'onboardingComplete': true},
+        SetOptions(merge: true),
+      );
       final updated = state.user!.copyWith(onboardingComplete: true);
       state = state.copyWith(user: updated);
       await _hiveStorage.saveUser(updated);

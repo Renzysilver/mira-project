@@ -3,9 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
+import '../../models/persona_model.dart';
 import '../../widgets/dreamy_background.dart';
 import '../../providers/persona_provider.dart';
 import '../../providers/auth_provider.dart';
+
+/// Human-readable label for the personality type, used in the companion card.
+String _personalityLabel(PersonalityType t) {
+  switch (t) {
+    case PersonalityType.sweet:
+      return 'Sweet & caring';
+    case PersonalityType.tsundere:
+      return 'Tsundere';
+    case PersonalityType.intellectual:
+      return 'Intellectual';
+  }
+}
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -167,7 +180,7 @@ class _TopIconBtn extends StatelessWidget {
 }
 
 class _CompanionCard extends StatelessWidget {
-  final dynamic persona;
+  final PersonaModel persona;
   final VoidCallback onCallTap;
   const _CompanionCard({required this.persona, required this.onCallTap});
 
@@ -210,11 +223,11 @@ class _CompanionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(persona?.name ?? 'Mira',
+                    Text(persona.name.isNotEmpty ? persona.name : 'Mira',
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w300,
                         color: AppTheme.moonWhite, letterSpacing: 1)),
                     const SizedBox(height: 4),
-                    Text(persona?.personalityType ?? 'Sweet & caring',
+                    Text(_personalityLabel(persona.personalityType),
                       style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, letterSpacing: 0.5)),
                     const SizedBox(height: 12),
                     Row(
