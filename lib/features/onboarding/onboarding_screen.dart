@@ -15,142 +15,147 @@ class OnboardingScreen extends ConsumerWidget {
     final state = ref.watch(onboardingProvider);
     final notifier = ref.read(onboardingProvider.notifier);
 
-    return DreamyBackground(
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
+    return Scaffold(
+      // Scaffold provides the Material ancestor required by TextField,
+      // SwitchListTile, ListTile, etc. Without it, those widgets throw
+      // 'No Material widget found' at runtime.
+      body: DreamyBackground(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
 
-              // Cherry blossom + brand mark
-              const _BlossomIcon(size: 36),
-              const SizedBox(height: 16),
+                // Cherry blossom + brand mark
+                const _BlossomIcon(size: 36),
+                const SizedBox(height: 16),
 
-              // Step title
-              ShaderMask(
-                shaderCallback: (b) => AppTheme.auroraGradient.createShader(b),
-                child: Text(
-                  _stepTitle(state.currentStep),
+                // Step title
+                ShaderMask(
+                  shaderCallback: (b) => AppTheme.auroraGradient.createShader(b),
+                  child: Text(
+                    _stepTitle(state.currentStep),
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w200,
+                      color: Colors.white,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _stepSubtitle(state.currentStep),
                   style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w200,
-                    color: Colors.white,
-                    letterSpacing: 2,
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                    letterSpacing: 1.5,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _stepSubtitle(state.currentStep),
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textSecondary,
-                  letterSpacing: 1.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 28),
+                const SizedBox(height: 28),
 
-              // Progress dots
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (i) {
-                  final isActive = i == state.currentStep;
-                  final isDone = i < state.currentStep;
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: isActive ? 24 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: isActive || isDone
-                          ? AppTheme.magentaAccent
-                          : Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 32),
-
-              // Step content
-              Expanded(
-                child: switch (state.currentStep) {
-                  0 => _NameStep(notifier: notifier, aiName: state.aiName),
-                  1 => _PersonalityStep(
-                      notifier: notifier,
-                      current: state.personalityType,
-                    ),
-                  _ => _ConfirmStep(state: state),
-                },
-              ),
-
-              // Nav buttons
-              Row(
-                children: [
-                  if (state.currentStep > 0) ...[
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: notifier.previousStep,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppTheme.textSecondary,
-                          side: BorderSide(
-                              color: Colors.white.withOpacity(0.2)),
-                          minimumSize: const Size(0, 54),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(28)),
-                        ),
-                        child: const Text('Back',
-                          style: TextStyle(letterSpacing: 1.5)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                  ],
-                  Expanded(
-                    child: Container(
-                      height: 54,
+                // Progress dots
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(3, (i) {
+                    final isActive = i == state.currentStep;
+                    final isDone = i < state.currentStep;
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: isActive ? 24 : 6,
+                      height: 6,
                       decoration: BoxDecoration(
-                        gradient: AppTheme.pinkGradient,
-                        borderRadius: BorderRadius.circular(28),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.magentaAccent.withOpacity(0.4),
-                            blurRadius: 20,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
+                        color: isActive || isDone
+                            ? AppTheme.magentaAccent
+                            : Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(3),
                       ),
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (state.currentStep == 2) {
-                            await notifier.completeOnboarding();
-                            if (context.mounted) context.go('/chat');
-                          } else {
-                            notifier.nextStep();
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(28)),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 32),
+
+                // Step content
+                Expanded(
+                  child: switch (state.currentStep) {
+                    0 => _NameStep(notifier: notifier, aiName: state.aiName),
+                    1 => _PersonalityStep(
+                        notifier: notifier,
+                        current: state.personalityType,
+                      ),
+                    _ => _ConfirmStep(state: state),
+                  },
+                ),
+
+                // Nav buttons
+                Row(
+                  children: [
+                    if (state.currentStep > 0) ...[
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: notifier.previousStep,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.textSecondary,
+                            side: BorderSide(
+                                color: Colors.white.withOpacity(0.2)),
+                            minimumSize: const Size(0, 54),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(28)),
+                          ),
+                          child: const Text('Back',
+                            style: TextStyle(letterSpacing: 1.5)),
                         ),
-                        child: Text(
-                          state.currentStep == 2 ? 'Begin' : 'Next',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                            letterSpacing: 2,
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                    Expanded(
+                      child: Container(
+                        height: 54,
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.pinkGradient,
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.magentaAccent.withOpacity(0.4),
+                              blurRadius: 20,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (state.currentStep == 2) {
+                              await notifier.completeOnboarding();
+                              if (context.mounted) context.go('/chat');
+                            } else {
+                              notifier.nextStep();
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(28)),
+                          ),
+                          child: Text(
+                            state.currentStep == 2 ? 'Begin' : 'Next',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                              letterSpacing: 2,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),

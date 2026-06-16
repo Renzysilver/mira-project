@@ -166,34 +166,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                 ),
 
-                // Chat messages — left-aligned panel
+                // Chat messages — left-aligned panel that fills available
+                // width up to 560px. On wide screens the character remains
+                // visible to the right of this panel; on narrow screens
+                // (mobile) it fills the screen.
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Container(
-                      // Constrain chat to ~55% width on wide screens so the
-                      // character remains visible on the right. On narrow
-                      // screens (mobile), it fills the width.
                       constraints: const BoxConstraints(maxWidth: 560),
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.only(
-                          top: 8, bottom: 8, left: 8, right: 8),
+                          top: 8, bottom: 8),
                         itemCount: chatState.messages.length +
                             (chatState.isTyping ? 1 : 0),
                         itemBuilder: (context, index) {
                           if (index == chatState.messages.length &&
                               chatState.isTyping) {
                             return const Padding(
-                              padding: EdgeInsets.only(top: 8),
+                              padding: EdgeInsets.only(top: 8, left: 8),
                               child: TypingIndicator());
                           }
                           final message = chatState.messages[index];
                           return ChatBubble(
                             message: message.content,
                             isUser: message.role == 'user',
-                            time: DateFormat('h:mm a').format(message.timestamp),
+                            time: DateFormat('h:mm a')
+                                .format(message.timestamp),
                           );
                         },
                       ),
@@ -241,51 +243,55 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           alignment: Alignment.centerLeft,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.glassWhite,
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: AppTheme.glassBorder),
-                    ),
-                    child: TextField(
-                      controller: _messageController,
-                      style: const TextStyle(color: AppTheme.textPrimary),
-                      decoration: const InputDecoration(
-                        hintText: 'Type a message...',
-                        hintStyle:
-                            TextStyle(color: AppTheme.mistGray, fontSize: 14),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 14),
+            child: SizedBox(
+              width: double.infinity,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.glassWhite,
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(color: AppTheme.glassBorder),
                       ),
-                      onSubmitted: (_) => _sendMessage(),
+                      child: TextField(
+                        controller: _messageController,
+                        style: const TextStyle(color: AppTheme.textPrimary),
+                        decoration: const InputDecoration(
+                          hintText: 'Type a message...',
+                          hintStyle: TextStyle(
+                              color: AppTheme.mistGray, fontSize: 14),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 14),
+                        ),
+                        onSubmitted: (_) => _sendMessage(),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppTheme.pinkGradient,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0x66E83E8C),
-                        blurRadius: 16,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
+                  const SizedBox(width: 10),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: AppTheme.pinkGradient,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x66E83E8C),
+                          blurRadius: 16,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.send,
+                          color: Colors.white, size: 20),
+                      onPressed: _sendMessage,
+                    ),
                   ),
-                  child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                    onPressed: _sendMessage,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
