@@ -115,6 +115,28 @@ class AppTheme {
           side: const BorderSide(color: glassBorder, width: 1),
         ),
       ),
+      // ListTile needs an explicit tileColor or Flutter warns that ink
+      // splashes are invisible against the scaffold background.
+      listTileTheme: const ListTileThemeData(
+        tileColor: Colors.transparent,
+        textColor: moonWhite,
+        iconColor: textSecondary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
+      ),
+      // Switch defaults — overridden per-switch via WidgetStateProperty
+      // in settings_screen.dart.
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? magentaAccent
+                : Colors.white70),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? magentaAccent.withOpacity(0.4)
+                : Colors.white.withOpacity(0.1)),
+      ),
     );
   }
 
