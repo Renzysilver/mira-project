@@ -69,8 +69,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     final persona = ref.read(personaProvider).persona;
     ref.read(chatProvider.notifier).sendMessage(text, persona);
+    // incrementMessageCount already bumps affection by +1 internally
+    // (Phase D change) — don't call updateAffection separately or we
+    // double-count.
     ref.read(personaProvider.notifier).incrementMessageCount();
-    ref.read(personaProvider.notifier).updateAffection(1);
     _scrollToBottom();
 
     // After sending, check if any new milestones unlocked.

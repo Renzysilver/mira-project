@@ -11,16 +11,16 @@ import '../providers/companions_provider.dart';
 
 /// Persona + relationship stats + milestones for the active companion.
 ///
-/// Loads from users/{uid}/companions/{activeId} directly. Affection
-/// increments on chat/call. Milestones auto-unlock when stats cross
-/// thresholds. Newly-unlocked milestones are exposed via
-/// [newlyUnlockedMilestonesProvider] so the UI can celebrate.
+/// Uses `.select((c) => c?.id)` so the provider only rebuilds when the
+/// companion ID changes, not on every companion doc update. The companion
+/// doc itself is streamed via `watchCompanionDoc` inside the notifier.
 final personaProvider =
     StateNotifierProvider<PersonaNotifier, PersonaState>((ref) {
   final storage = ref.watch(firestoreStorageProvider);
-  final activeCompanion = ref.watch(activeCompanionProvider);
+  final activeCompanionId =
+      ref.watch(activeCompanionProvider.select((c) => c?.id));
   if (storage == null) return PersonaNotifier(null, null);
-  return PersonaNotifier(storage, activeCompanion?.id);
+  return PersonaNotifier(storage, activeCompanionId);
 });
 
 class PersonaState {

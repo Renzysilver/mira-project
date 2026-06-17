@@ -20,16 +20,21 @@ final aiServiceProvider = Provider<AiService>((ref) => AiService());
 /// independent chat history at:
 ///   users/{uid}/companions/{companionId}/messages/
 ///
-/// Switching companions automatically swaps the visible chat history.
+/// IMPORTANT: uses `.select((c) => c?.id)` so the provider only rebuilds
+/// when the companion ID changes — NOT when the companion doc updates
+/// (e.g. affection increment, milestone unlock). Without this, writing
+/// to the companion doc mid-flight would dispose the ChatNotifier and
+/// lose the in-progress API response.
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
   final storage = ref.watch(firestoreStorageProvider);
-  final activeCompanion = ref.watch(activeCompanionProvider);
+  final activeCompanionId =
+      ref.watch(activeCompanionProvider.select((c) => c?.id));
   return ChatNotifier(
     ref.read(webSocketClientProvider),
     storage,
     ref.read(memoryServiceProvider),
     ref.read(aiServiceProvider),
-    activeCompanion?.id,
+    activeCompanionId,
   );
 });
 

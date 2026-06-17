@@ -7,22 +7,21 @@ import '../core/utils/logger.dart';
 
 /// Memory service — now scoped per-companion.
 ///
-/// Watches [activeCompanionProvider] and reads/writes memories at:
-///   users/{uid}/companions/{companionId}/memories/facts
-///
-/// Each companion builds its own relationship with the user — memories
-/// do NOT transfer between companions.
+/// Uses `.select((c) => c?.id)` so the provider only rebuilds when the
+/// companion ID changes, not on every companion doc update.
 final memoryServiceProvider = Provider<MemoryService>((ref) {
   final storage = ref.watch(firestoreStorageProvider);
-  final activeCompanion = ref.watch(activeCompanionProvider);
-  return MemoryService(storage, activeCompanion?.id);
+  final activeCompanionId =
+      ref.watch(activeCompanionProvider.select((c) => c?.id));
+  return MemoryService(storage, activeCompanionId);
 });
 
 final memoryFactsProvider = StreamProvider<List<String>>((ref) {
   final storage = ref.watch(firestoreStorageProvider);
-  final activeCompanion = ref.watch(activeCompanionProvider);
-  if (storage == null || activeCompanion == null) return Stream.value([]);
-  return storage.watchCompanionMemoryFacts(activeCompanion.id);
+  final activeCompanionId =
+      ref.watch(activeCompanionProvider.select((c) => c?.id));
+  if (storage == null || activeCompanionId == null) return Stream.value([]);
+  return storage.watchCompanionMemoryFacts(activeCompanionId);
 });
 
 class MemoryService {
