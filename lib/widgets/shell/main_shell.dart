@@ -26,9 +26,9 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _routes = [
     '/chat',
     '/companions',
-    '/home',     // "Mira" — the magnificent main home screen
+    '/mira',      // "Mira" — the standalone AI assistant
     '/memory',
-    '/persona',  // Profile
+    '/persona',   // Profile
   ];
 
   void _onTap(int i) {

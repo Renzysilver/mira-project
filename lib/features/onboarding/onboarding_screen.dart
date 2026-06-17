@@ -138,7 +138,7 @@ class OnboardingScreen extends ConsumerWidget {
                           onPressed: () async {
                             if (state.currentStep == 2) {
                               await notifier.completeOnboarding();
-                              if (context.mounted) context.go('/chat');
+                              if (context.mounted) context.go('/mira');
                             } else {
                               notifier.nextStep();
                             }

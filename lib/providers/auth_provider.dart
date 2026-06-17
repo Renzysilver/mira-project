@@ -9,6 +9,10 @@ import '../models/user_model.dart';
 import '../core/utils/logger.dart';
 import '../services/notification_service.dart';
 
+/// Whether the current user has completed onboarding.
+/// Synced from Firestore user doc on auth state change.
+final onboardingCompleteProvider = StateProvider<bool>((ref) => false);
+
 // ---------------------------------------------------------------------------
 // Top-level providers — must live here, outside every class
 // ---------------------------------------------------------------------------
@@ -96,11 +100,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final cached = await _hiveStorage.getUser();
         if (cached != null) {
           state = state.copyWith(isAuthenticated: true, user: cached);
+          // Sync onboardingComplete from cached user so onboarding
+          // doesn't re-trigger on every app restart.
+          _ref.read(onboardingCompleteProvider.notifier).state =
+              cached.onboardingComplete;
         }
 
         // Refresh from Firestore in background; update state + cache if changed.
         final fresh = await _fetchUserModel(firebaseUser);
         state = state.copyWith(isAuthenticated: true, user: fresh);
+        // Sync onboardingComplete from fresh Firestore data.
+        _ref.read(onboardingCompleteProvider.notifier).state =
+            fresh.onboardingComplete;
 
         await _saveToken(firebaseUser);
         _notificationService.initialize();

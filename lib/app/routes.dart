@@ -14,9 +14,12 @@ import '../features/persona/persona_screen.dart';
 import '../features/memory/memory_screen.dart';
 import '../features/companions/companions_screen.dart';
 import '../features/companion_creator/companion_creator_screen.dart';
+import '../features/mira/mira_assistant_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../providers/auth_provider.dart' show onboardingCompleteProvider;
 
-final onboardingCompleteProvider = StateProvider<bool>((ref) => false);
+// onboardingCompleteProvider moved to auth_provider.dart to avoid
+// circular imports (auth_provider needs to sync it with Firestore).
 
 final routerProvider = Provider.family<GoRouter, bool>((ref, isAuthenticated) {
   return GoRouter(
@@ -35,10 +38,10 @@ final routerProvider = Provider.family<GoRouter, bool>((ref, isAuthenticated) {
       if (!isAuthenticated && !isAuthRoute && !isOnboardingRoute) {
         return '/auth/login';
       }
-      // Authenticated users land on the magnificent Mira home screen.
+      // Authenticated users land on the Mira assistant screen.
       if (isAuthenticated && isAuthRoute) {
         if (!onboardingComplete) return '/onboarding';
-        return '/home';
+        return '/mira';
       }
       if (isAuthenticated && !onboardingComplete && !isOnboardingRoute) {
         return '/onboarding';
@@ -53,6 +56,7 @@ final routerProvider = Provider.family<GoRouter, bool>((ref, isAuthenticated) {
         GoRoute(path: '/name', builder: (context, state) => const NameSetupScreen()),
         GoRoute(path: '/personality', builder: (context, state) => const PersonalitySetupScreen()),
       ]),
+      GoRoute(path: '/mira', builder: (context, state) => const MiraAssistantScreen()),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
       GoRoute(path: '/call', builder: (context, state) => const CallScreen()),

@@ -505,3 +505,38 @@ class FirestoreStorage {
   }
 }
 
+
+  // ---------------------------------------------------------------------------
+  // Mira Assistant messages (separate from companion chats)
+  // ---------------------------------------------------------------------------
+  // Mira is the system AI assistant — NOT a companion. She has her own
+  // chat history at users/{uid}/mira_messages/{messageId}, completely
+  // separate from companion chats.
+  // ---------------------------------------------------------------------------
+
+  CollectionReference get _miraMessagesCol =>
+      _userDoc.collection('mira_messages');
+
+  Stream<List<Map<String, dynamic>>> watchMiraMessages({int limit = 50}) {
+    return _miraMessagesCol
+        .orderBy('timestamp', descending: false)
+        .limitToLast(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => Map<String, dynamic>.from(d.data() as Map)..['id'] = d.id)
+            .toList());
+  }
+
+  Future<void> addMiraMessage(Map<String, dynamic> message) async {
+    await _miraMessagesCol.add({
+      ...message,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> clearMiraMessages() async {
+    final snap = await _miraMessagesCol.get();
+    final batch = _db.batch();
+    for (final doc in snap.docs) batch.delete(doc.reference);
+    await batch.commit();
+  }
