@@ -87,7 +87,7 @@ class PersonaNotifier extends StateNotifier<PersonaState> {
 
   // ── Persona writes ────────────────────────────────────────────────
   Future<void> updatePersona(PersonaModel persona) async {
-    if (_storage == null) return;
+    if (_storage == null || !mounted) return;
     state = state.copyWith(persona: persona);
     await _storage.savePersona(persona.toJson());
   }
@@ -109,7 +109,7 @@ class PersonaNotifier extends StateNotifier<PersonaState> {
 
   // ── Relationship stat writes ──────────────────────────────────────
   Future<void> _updateStats(RelationshipModel updated) async {
-    if (_storage == null) return;
+    if (_storage == null || !mounted) return;
     state = state.copyWith(relationship: updated);
     await _storage.saveRelationshipStats(updated.toJson());
   }

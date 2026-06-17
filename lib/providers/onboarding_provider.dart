@@ -54,17 +54,22 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   void setPersonalityType(PersonalityType type) => state = state.copyWith(personalityType: type);
 
   Future<void> completeOnboarding() async {
-    // Write persona to Firestore via personaProvider
-    await _personaNotifier.updatePersona(PersonaModel(
+    // Re-read the notifier from the ref each time — personaProvider can
+    // rebuild mid-flight (e.g. when activeCompanionProvider changes after
+    // signup), which disposes the old notifier we captured at construction.
+    // Using a stale reference throws 'Consider checking mounted'.
+    final persona = PersonaModel(
       name: state.aiName,
       personalityType: state.personalityType,
       currentMood: AvatarMood.happy,
-    ));
-    await _personaNotifier.setStartDate();
+    );
+    await _ref.read(personaProvider.notifier).updatePersona(persona);
+    await _ref.read(personaProvider.notifier).setStartDate();
 
     // Flip onboardingComplete on the anchor doc via authProvider
     await _ref.read(authProvider.notifier).completeOnboarding();
 
+    if (!mounted) return;
     _ref.read(onboardingCompleteProvider.notifier).state = true;
     state = state.copyWith(isComplete: true);
   }
