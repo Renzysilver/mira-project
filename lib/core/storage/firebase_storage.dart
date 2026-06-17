@@ -228,4 +228,90 @@ class FirestoreStorage {
         .map((d) => Map<String, dynamic>.from(d.data() as Map)..['id'] = d.id)
         .toList());
   }
+
+  // ---------------------------------------------------------------------------
+  // Companions (multi-companion support — Phase C of master vision)
+  // ---------------------------------------------------------------------------
+  // Each user can have multiple companions stored at:
+  //   users/{uid}/companions/{companionId}
+  //
+  // One companion per user has is_active = true — that's the one currently
+  // selected for chat / call / persona display. The rest are stored for
+  // later switching.
+  //
+  // Legacy single-companion data lives at users/{uid}/persona/current —
+  // we keep that path working until the full migration to /companions.
+  // ---------------------------------------------------------------------------
+
+  CollectionReference get _companionsCol => _userDoc.collection('companions');
+
+  /// Create a new companion. Returns the new companion's ID.
+  ///
+  /// The new companion is marked is_active = true, and all other
+  /// companions for this user are set to is_active = false.
+  Future<String> createCompanion(Map<String, dynamic> companion) async {
+    final batch = _db.batch();
+    // Deactivate existing companions
+    final existing = await _companionsCol.get();
+    for (final doc in existing.docs) {
+      batch.update(doc.reference, {'is_active': false});
+    }
+    // Insert new companion as active
+    final newRef = _companionsCol.doc();
+    batch.set(newRef, {
+      ...companion,
+      'is_active': true,
+      'created_at': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+    return newRef.id;
+  }
+
+  /// List all companions for the user, ordered by creation time.
+  Future<List<Map<String, dynamic>>> getCompanions() async {
+    final snap = await _companionsCol
+        .orderBy('created_at', descending: false)
+        .get();
+    return snap.docs
+        .map((d) => Map<String, dynamic>.from(d.data() as Map)..['id'] = d.id)
+        .toList();
+  }
+
+  /// Stream of companions (live updates when one is added/edited).
+  Stream<List<Map<String, dynamic>>> watchCompanions() {
+    return _companionsCol
+        .orderBy('created_at', descending: false)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) =>
+                Map<String, dynamic>.from(d.data() as Map)..['id'] = d.id)
+            .toList());
+  }
+
+  /// Get the currently-active companion, or null if none exists.
+  Future<Map<String, dynamic>?> getActiveCompanion() async {
+    final snap = await _companionsCol.where('is_active', isEqualTo: true).limit(1).get();
+    if (snap.docs.isEmpty) return null;
+    final doc = snap.docs.first;
+    return Map<String, dynamic>.from(doc.data() as Map)..['id'] = doc.id;
+  }
+
+  /// Set [companionId] as the active companion (deactivates all others).
+  Future<void> setActiveCompanion(String companionId) async {
+    final batch = _db.batch();
+    final existing = await _companionsCol.get();
+    for (final doc in existing.docs) {
+      batch.update(doc.reference, {
+        'is_active': doc.id == companionId,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
+
+  /// Delete a companion by ID.
+  Future<void> deleteCompanion(String companionId) async {
+    await _companionsCol.doc(companionId).delete();
+  }
 }

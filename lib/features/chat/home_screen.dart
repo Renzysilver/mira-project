@@ -59,6 +59,9 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     Row(
                       children: [
+                        _TopIconBtn(icon: Icons.add_rounded,
+                          onTap: () => context.go('/companion/new')),
+                        const SizedBox(width: 8),
                         _TopIconBtn(icon: Icons.notifications_none_rounded,
                           onTap: () {}),
                         const SizedBox(width: 8),

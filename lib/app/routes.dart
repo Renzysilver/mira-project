@@ -12,6 +12,7 @@ import '../features/chat/chat_screen.dart';
 import '../features/call/call_screen.dart';
 import '../features/persona/persona_screen.dart';
 import '../features/memory/memory_screen.dart';
+import '../features/companion_creator/companion_creator_screen.dart';
 import '../features/settings/settings_screen.dart';
 
 final onboardingCompleteProvider = StateProvider<bool>((ref) => false);
@@ -55,6 +56,7 @@ final routerProvider = Provider.family<GoRouter, bool>((ref, isAuthenticated) {
       GoRoute(path: '/call', builder: (context, state) => const CallScreen()),
       GoRoute(path: '/persona', builder: (context, state) => const PersonaScreen()),
       GoRoute(path: '/memory', builder: (context, state) => const MemoryScreen()),
+      GoRoute(path: '/companion/new', builder: (context, state) => const CompanionCreatorScreen()),
       GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
     ],
   );
