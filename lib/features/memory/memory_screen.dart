@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme.dart';
 import '../../services/memory_service.dart';
-import '../../widgets/dreamy_background.dart';
+import '../../widgets/atmosphere/atmospheric_background.dart';
 import '../../widgets/shell/main_shell.dart';
 
 /// Memory screen — shows the facts Mira has learned about the user.
@@ -15,7 +15,7 @@ class MemoryScreen extends ConsumerWidget {
 
     return MainShell(
       currentIndex: 3,
-      child: DreamyBackground(
+      child: AtmosphericBackground(
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

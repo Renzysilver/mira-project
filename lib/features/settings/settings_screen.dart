@@ -5,7 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/persona_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../app/theme.dart';
-import '../../widgets/dreamy_background.dart';
+import '../../widgets/atmosphere/atmospheric_background.dart';
 import '../../widgets/shell/main_shell.dart';
 import '../../widgets/avatar_switcher_widget.dart';
 
@@ -32,7 +32,7 @@ class SettingsScreen extends ConsumerWidget {
       // Settings isn't in the bottom nav — default to -1 so nothing is active.
       // But MainShell requires 0-4, so we use 4 (Profile) as the closest match.
       currentIndex: 4,
-      child: DreamyBackground(
+      child: AtmosphericBackground(
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),

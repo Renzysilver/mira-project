@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
-import '../../widgets/dreamy_background.dart';
+import '../../widgets/atmosphere/atmospheric_background.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -64,7 +64,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: DreamyBackground(
+      body: AtmosphericBackground(
         child: SafeArea(
           child: Stack(
             children: [

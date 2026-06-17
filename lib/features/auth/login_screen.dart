@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/dreamy_background.dart';
+import '../../widgets/atmosphere/atmospheric_background.dart';
 import '../../widgets/auth/dreamy_form_widgets.dart';
 import '../../app/theme.dart';
 
@@ -48,7 +48,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     });
 
     return Scaffold(
-      body: DreamyBackground(
+      body: AtmosphericBackground(
         child: FadeTransition(
           opacity: _fade,
           child: SafeArea(

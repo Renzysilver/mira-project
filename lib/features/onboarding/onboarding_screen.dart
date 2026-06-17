@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/persona_model.dart';
 import '../../providers/onboarding_provider.dart';
 import '../../app/theme.dart';
-import '../../widgets/dreamy_background.dart';
+import '../../widgets/atmosphere/atmospheric_background.dart';
 
 class OnboardingScreen extends ConsumerWidget {
   const OnboardingScreen({super.key});
@@ -19,7 +19,7 @@ class OnboardingScreen extends ConsumerWidget {
       // Scaffold provides the Material ancestor required by TextField,
       // SwitchListTile, ListTile, etc. Without it, those widgets throw
       // 'No Material widget found' at runtime.
-      body: DreamyBackground(
+      body: AtmosphericBackground(
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 import '../../models/persona_model.dart';
-import '../../widgets/dreamy_background.dart';
+import '../../widgets/atmosphere/atmospheric_background.dart';
 import '../../widgets/mira_avatar.dart';
 import '../../widgets/shell/main_shell.dart';
 import '../../providers/persona_provider.dart';
@@ -33,7 +33,7 @@ class HomeScreen extends ConsumerWidget {
 
     return MainShell(
       currentIndex: 2,
-      child: DreamyBackground(
+      child: AtmosphericBackground(
         child: SafeArea(
           child: Column(
             children: [

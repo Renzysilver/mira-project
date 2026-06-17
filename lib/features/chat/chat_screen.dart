@@ -65,16 +65,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       currentIndex: 0,
       child: Stack(
         children: [
-          // ── Layer 1: Base background gradient (fallback) ────────────────
+          // ── Layer 1: Base background gradient (aurora palette) ───────────
+          // Matches AtmosphericBackground so chat doesn't feel out of place
+          // alongside the other screens.
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFF0A0518),
-                    Color(0xFF1A0B2E),
-                    Color(0xFF0D0820),
+                    Color(0xFF4A1C8A),
+                    Color(0xFF1A1A3A),
+                    Color(0xFF2A2A5A),
+                    Color(0xFF050510),
                   ],
+                  stops: [0.0, 0.4, 0.7, 1.0],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
