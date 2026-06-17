@@ -229,12 +229,12 @@ class _CompanionCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isActive
               ? AppTheme.magentaAccent.withOpacity(0.1)
               : AppTheme.glassWhite,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isActive
                 ? AppTheme.magentaAccent
@@ -251,73 +251,83 @@ class _CompanionCard extends StatelessWidget {
                 ]
               : null,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Avatar with hair color ring (smaller to prevent overflow)
-            Container(
-              width: 58,
-              height: 58,
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppTheme.pinkGradient,
-                border: Border.all(
-                    color: _parseColor(hairColor).withOpacity(0.5),
-                    width: 1.5),
-              ),
-              child: Container(
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.midnightBlue,
-                ),
-                child: Icon(Icons.face,
-                    color: _parseColor(eyeColor), size: 26),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Name — handle long names with ellipsis
-            Text(name,
-                style: const TextStyle(
-                    color: AppTheme.moonWhite,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.5),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 2),
-            // Subtitle
-            Text(subtitle,
-                style: const TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 10),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 6),
-            // Active badge or interest count
-            if (isActive)
+        // IntrinsicHeight ensures the Column fills the card height
+        // without overflowing — text widgets use Flexible so they
+        // shrink instead of pushing past the boundary.
+        child: IntrinsicHeight(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Avatar with hair color ring (compact)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                width: 52,
+                height: 52,
+                padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
-                  color: AppTheme.magentaAccent.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  shape: BoxShape.circle,
+                  gradient: AppTheme.pinkGradient,
                   border: Border.all(
-                      color: AppTheme.magentaAccent.withOpacity(0.5)),
+                      color: _parseColor(hairColor).withOpacity(0.5),
+                      width: 1.5),
                 ),
-                child: const Text('ACTIVE',
+                child: Container(
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.midnightBlue,
+                  ),
+                  child: Icon(Icons.face,
+                      color: _parseColor(eyeColor), size: 24),
+                ),
+              ),
+              const SizedBox(height: 6),
+              // Name — Flexible so it shrinks if needed
+              Flexible(
+                child: Text(name,
+                    style: const TextStyle(
+                        color: AppTheme.moonWhite,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.4),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(height: 2),
+              // Subtitle
+              Flexible(
+                child: Text(subtitle,
+                    style: const TextStyle(
+                        color: AppTheme.textSecondary, fontSize: 10),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(height: 4),
+              // Active badge or interest count
+              if (isActive)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppTheme.magentaAccent.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: AppTheme.magentaAccent.withOpacity(0.5)),
+                  ),
+                  child: const Text('ACTIVE',
+                      style: TextStyle(
+                          color: AppTheme.moonRose,
+                          fontSize: 8,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1)),
+                )
+              else
+                Text('$interestCount interests',
                     style: TextStyle(
-                        color: AppTheme.moonRose,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.2)),
-              )
-            else
-              Text('$interestCount interests',
-                  style: TextStyle(
-                      color: AppTheme.textSecondary.withOpacity(0.6),
-                      fontSize: 9)),
-          ],
+                        color: AppTheme.textSecondary.withOpacity(0.6),
+                        fontSize: 9)),
+            ],
+          ),
         ),
       ),
     );

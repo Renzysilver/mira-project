@@ -33,20 +33,25 @@ class OnboardingScreen extends ConsumerWidget {
                 children: [
                   const SizedBox(height: 8),
 
-                // Cherry blossom + brand mark
-                const _BlossomIcon(size: 36),
-                const SizedBox(height: 12),
-
-                // Step title
+                // Step title (large sakura decoration removed per
+                // user request — only small floating petals remain via
+                // AtmosphericBackground)
                 ShaderMask(
                   shaderCallback: (b) => AppTheme.auroraGradient.createShader(b),
                   child: Text(
                     _stepTitle(state.currentStep),
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w200,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w400,
                       color: Colors.white,
                       letterSpacing: 2,
+                      height: 1.2,
+                      shadows: [
+                        Shadow(
+                          color: AppTheme.magentaAccent.withOpacity(0.4),
+                          blurRadius: 16,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -460,47 +465,4 @@ class _ConfirmStep extends StatelessWidget {
         PersonalityType.tsundere => 'Tsundere',
         PersonalityType.intellectual => 'Intellectual',
       };
-}
-
-// ── Cherry blossom icon (shared) ──────────────────────────────────────
-
-class _BlossomIcon extends StatelessWidget {
-  final double size;
-  const _BlossomIcon({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(painter: _BlossomPainter()),
-    );
-  }
-}
-
-class _BlossomPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size canvasSize) {
-    final center = Offset(canvasSize.width / 2, canvasSize.height / 2);
-    final petalRadius = canvasSize.width * 0.22;
-    final distance = canvasSize.width * 0.22;
-
-    final petalPaint = Paint()
-      ..color = AppTheme.moonRose
-      ..style = PaintingStyle.fill;
-    final centerPaint = Paint()
-      ..color = AppTheme.magentaAccent
-      ..style = PaintingStyle.fill;
-
-    for (int i = 0; i < 5; i++) {
-      final angle = (i / 5) * 2 * pi - pi / 2;
-      final dx = center.dx + distance * cos(angle);
-      final dy = center.dy + distance * sin(angle);
-      canvas.drawCircle(Offset(dx, dy), petalRadius, petalPaint);
-    }
-    canvas.drawCircle(center, canvasSize.width * 0.08, centerPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

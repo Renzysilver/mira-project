@@ -334,54 +334,54 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Sparkle icon (smaller on mobile)
+          // Sparkle icon (compact)
           Container(
-            width: 52,
-            height: 52,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: AppTheme.pinkGradient,
               boxShadow: [
                 BoxShadow(
                   color: AppTheme.magentaAccent.withOpacity(0.4),
-                  blurRadius: 20,
+                  blurRadius: 16,
                   spreadRadius: 1,
                 ),
               ],
             ),
             child: const Icon(Icons.auto_awesome,
-                color: Colors.white, size: 24),
+                color: Colors.white, size: 20),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Text(
             'Start the conversation',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: FontWeight.w300,
               color: AppTheme.moonWhite.withOpacity(0.9),
-              letterSpacing: 1.2,
+              letterSpacing: 1,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             'Say hi to ${companionName.isEmpty ? 'Mira' : companionName} — or try a slash command:',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 10,
               color: AppTheme.textSecondary.withOpacity(0.8),
-              height: 1.4,
+              height: 1.3,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           // Command hints
           Wrap(
             alignment: WrapAlignment.center,
-            spacing: 6,
-            runSpacing: 6,
+            spacing: 5,
+            runSpacing: 5,
             children: [
               _CommandHint('/help'),
               _CommandHint('/time'),
@@ -389,7 +389,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               _CommandHint('/remind 5m ...'),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           // Suggested opening lines
           const Text(
             'SUGGESTIONS',
@@ -399,11 +399,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 letterSpacing: 2,
                 fontWeight: FontWeight.w500),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
             Wrap(
               alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 6,
+              runSpacing: 6,
               children: suggestions.map((s) {
                 return GestureDetector(
                   onTap: () {
@@ -412,17 +412,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 9),
+                        horizontal: 12, vertical: 7),
                     decoration: BoxDecoration(
                       color: AppTheme.glassWhite,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppTheme.glassBorder),
                     ),
                     child: Text(
                       s,
                       style: const TextStyle(
                         color: AppTheme.moonWhite,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -437,15 +437,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildInputArea() {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    // The floating bottom nav occupies ~86px from screen bottom
-    // (20px margin + ~56px nav height + 10px internal padding).
-    // Position the input just above the nav with minimal gap.
-    // When keyboard is open, viewInsets.bottom covers the nav, so we
-    // only need a small gap above the keyboard.
-    final bottomPadding = bottomInset > 0 ? 8.0 + bottomInset : 72.0;
+    // When keyboard is open, the Scaffold (resizeToAvoidBottomInset)
+    // has ALREADY shrunk the body above the keyboard. So we only need
+    // a small gap (8px) above the keyboard edge.
+    // When keyboard is closed, we need ~72px to clear the floating
+    // bottom nav (20px margin + ~52px nav height).
+    // Do NOT add bottomInset to padding — that double-counts the
+    // keyboard height and causes a 112px overflow.
+    final bottomPadding = bottomInset > 0 ? 8.0 : 72.0;
     return SafeArea(
+      // SafeArea bottom is false when keyboard is open so it doesn't
+      // add extra padding on top of the keyboard.
+      bottom: bottomInset == 0,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding),
+        padding: EdgeInsets.fromLTRB(16, 6, 16, bottomPadding),
         child: Row(
           children: [
             Expanded(
