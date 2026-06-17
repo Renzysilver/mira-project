@@ -26,9 +26,9 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _routes = [
     '/chat',
     '/call',
-    '/home',     // "Mira" — companion card screen
-    '/memory',   // not implemented yet — placeholder
-    '/persona',  // Profile
+    '/companions', // "Mira" — companion list/switcher
+    '/memory',
+    '/persona',    // Profile
   ];
 
   void _onTap(int i) {
@@ -72,8 +72,8 @@ class _MainShellState extends ConsumerState<MainShell> {
               onTap: () => _onTap(1),
             ),
             _NavIcon(
-              icon: Icons.auto_awesome_outlined,
-              label: 'Mira',
+              icon: Icons.favorite_outline_rounded,
+              label: 'Companions',
               isSelected: widget.currentIndex == 2,
               isCenter: true,
               onTap: () => _onTap(2),

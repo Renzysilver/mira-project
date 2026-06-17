@@ -5,11 +5,20 @@ import '../models/persona_model.dart';
 import '../models/relationship_model.dart';
 import '../core/utils/logger.dart';
 import '../providers/auth_provider.dart';
+import '../providers/companions_provider.dart';
 
-final personaProvider = StateNotifierProvider<PersonaNotifier, PersonaState>((ref) {
+/// Persona + relationship stats for the currently-active companion.
+///
+/// Watches [activeCompanionProvider] and reloads when the active
+/// companion changes. Falls back to the legacy /persona/current path
+/// when no companion exists in /companions/{id} (i.e. legacy users
+/// who haven't migrated yet, or freshly-onboarded accounts).
+final personaProvider =
+    StateNotifierProvider<PersonaNotifier, PersonaState>((ref) {
   final storage = ref.watch(firestoreStorageProvider);
-  if (storage == null) return PersonaNotifier(null);
-  return PersonaNotifier(storage); // storage is FirestoreStorage here, not nullable
+  final activeCompanion = ref.watch(activeCompanionProvider);
+  if (storage == null) return PersonaNotifier(null, null);
+  return PersonaNotifier(storage, activeCompanion?.id);
 });
 
 class PersonaState {
@@ -38,25 +47,27 @@ class PersonaState {
 
 class PersonaNotifier extends StateNotifier<PersonaState> {
   final FirestoreStorage? _storage;
+  final String? _companionId;
   StreamSubscription? _sub;
 
-  PersonaNotifier(this._storage) : super(const PersonaState()) {
+  PersonaNotifier(this._storage, this._companionId)
+      : super(const PersonaState()) {
     if (_storage == null) return;
-      _subscribe();
+    _subscribe();
   }
 
   void _subscribe() {
-    // persona/current holds both persona fields and relationship_stats —
-    // one stream covers both, no double-read needed
     state = state.copyWith(isLoading: true);
+    _sub?.cancel();
     _sub = _storage!.watchPersona().listen(
-          (data) {
+      (data) {
         if (data == null) return;
         final rawStats = data['relationship_stats'];
         state = state.copyWith(
           persona: PersonaModel.fromJson(data),
           relationship: rawStats != null
-              ? RelationshipModel.fromJson(Map<String, dynamic>.from(rawStats as Map))
+              ? RelationshipModel.fromJson(
+                  Map<String, dynamic>.from(rawStats as Map))
               : const RelationshipModel(),
           isLoading: false,
         );
@@ -74,13 +85,9 @@ class PersonaNotifier extends StateNotifier<PersonaState> {
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // Persona writes
-  // ---------------------------------------------------------------------------
-
+  // ── Persona writes ────────────────────────────────────────────────
   Future<void> updatePersona(PersonaModel persona) async {
     if (_storage == null) return;
-    // Optimistic update — stream will confirm
     state = state.copyWith(persona: persona);
     await _storage.savePersona(persona.toJson());
   }
@@ -100,30 +107,23 @@ class PersonaNotifier extends StateNotifier<PersonaState> {
   Future<void> toggleFriendshipMode() async =>
       updatePersona(state.persona.copyWith(friendshipMode: !state.persona.friendshipMode));
 
-  // ---------------------------------------------------------------------------
-  // Relationship stat writes
-  // ---------------------------------------------------------------------------
-
+  // ── Relationship stat writes ──────────────────────────────────────
   Future<void> _updateStats(RelationshipModel updated) async {
     if (_storage == null) return;
-    // Optimistic update — stream will confirm
     state = state.copyWith(relationship: updated);
     await _storage.saveRelationshipStats(updated.toJson());
   }
 
-  Future<void> incrementMessageCount() async =>
-      _updateStats(state.relationship.copyWith(
-          messagesSent: state.relationship.messagesSent + 1));
+  Future<void> incrementMessageCount() async => _updateStats(
+      state.relationship.copyWith(messagesSent: state.relationship.messagesSent + 1));
 
-  Future<void> incrementCallCount() async =>
-      _updateStats(state.relationship.copyWith(
-          callsMade: state.relationship.callsMade + 1));
+  Future<void> incrementCallCount() async => _updateStats(
+      state.relationship.copyWith(callsMade: state.relationship.callsMade + 1));
 
-  Future<void> updateAffection(int change) async =>
-      _updateStats(state.relationship.copyWith(
+  Future<void> updateAffection(int change) async => _updateStats(
+      state.relationship.copyWith(
           affectionLevel: (state.relationship.affectionLevel + change).clamp(0, 100)));
 
-  Future<void> setStartDate() async =>
-      _updateStats(state.relationship.copyWith(
-          startDate: DateTime.now().toIso8601String()));
+  Future<void> setStartDate() async => _updateStats(
+      state.relationship.copyWith(startDate: DateTime.now().toIso8601String()));
 }

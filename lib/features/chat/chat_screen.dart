@@ -9,6 +9,7 @@ import '../../widgets/chat_bubble.dart';
 import '../../widgets/typing_indicator.dart';
 import '../../widgets/mira_avatar.dart';
 import '../../widgets/shell/main_shell.dart';
+import '../../widgets/shell/companion_switcher.dart';
 import '../../app/theme.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -125,7 +126,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               children: [
                 // Floating header — NO border, just content on a soft blur
                 _ChatHeader(
-                  personaName: personaState.persona.name,
                   isTyping: chatState.isTyping,
                   characterVisible: showCharacter,
                   onToggleCharacter: () => setState(
@@ -244,21 +244,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
 // ── Beautiful floating header (no border) ───────────────────────────────
 
-class _ChatHeader extends StatelessWidget {
-  final String personaName;
+class _ChatHeader extends ConsumerWidget {
   final bool isTyping;
   final bool characterVisible;
   final VoidCallback onToggleCharacter;
 
   const _ChatHeader({
-    required this.personaName,
     required this.isTyping,
     required this.characterVisible,
     required this.onToggleCharacter,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(
@@ -301,20 +299,14 @@ class _ChatHeader extends StatelessWidget {
           ),
           const SizedBox(width: 12),
 
-          // Name + status
+          // Companion switcher (replaces static name) + online/typing status
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(personaName,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.moonWhite,
-                      letterSpacing: 1,
-                    )),
-                const SizedBox(height: 2),
+                const CompanionSwitcher(),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     if (isTyping) ...[
