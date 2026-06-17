@@ -436,9 +436,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildInputArea() {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    // The floating bottom nav occupies ~86px from screen bottom
+    // (20px margin + ~56px nav height + 10px internal padding).
+    // When keyboard is open, viewInsets.bottom covers the nav, so we
+    // only need a small gap above the keyboard.
+    final bottomPadding = bottomInset > 0 ? 8.0 + bottomInset : 90.0;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
+        padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding),
         child: Row(
           children: [
             Expanded(

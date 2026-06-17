@@ -14,18 +14,21 @@ class OnboardingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(onboardingProvider);
     final notifier = ref.read(onboardingProvider.notifier);
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
-      // Scaffold provides the Material ancestor required by TextField,
-      // SwitchListTile, ListTile, etc. Without it, those widgets throw
-      // 'No Material widget found' at runtime.
+      // resizeToAvoidBottomInset is true by default — the Scaffold
+      // shrinks when the keyboard opens. Combined with SingleChildScrollView
+      // below, this prevents the 'Bottom overflowed by N pixels' error.
       body: AtmosphericBackground(
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-            child: Column(
-              children: [
-                const SizedBox(height: 12),
+            padding: EdgeInsets.fromLTRB(28, 24, 28, 24 + bottomInset),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 12),
 
                 // Cherry blossom + brand mark
                 const _BlossomIcon(size: 36),
@@ -77,17 +80,16 @@ class OnboardingScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 32),
 
-                // Step content
-                Expanded(
-                  child: switch (state.currentStep) {
-                    0 => _NameStep(notifier: notifier, aiName: state.aiName),
-                    1 => _PersonalityStep(
-                        notifier: notifier,
-                        current: state.personalityType,
-                      ),
-                    _ => _ConfirmStep(state: state),
-                  },
-                ),
+                // Step content — no Expanded (we're inside a scroll view
+                // which has unbounded height). Each step sizes itself.
+                switch (state.currentStep) {
+                  0 => _NameStep(notifier: notifier, aiName: state.aiName),
+                  1 => _PersonalityStep(
+                      notifier: notifier,
+                      current: state.personalityType,
+                    ),
+                  _ => _ConfirmStep(state: state),
+                },
 
                 // Nav buttons
                 Row(
@@ -155,6 +157,7 @@ class OnboardingScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
               ],
+            ),
             ),
           ),
         ),
@@ -286,10 +289,11 @@ class _PersonalityStep extends StatelessWidget {
       ),
     ];
 
-    return ListView.builder(
-      itemCount: personalities.length,
-      itemBuilder: (_, i) {
-        final p = personalities[i];
+    // Use Column instead of ListView.builder — we're now inside a
+    // SingleChildScrollView, and nested scrollables cause unbounded
+    // height errors.
+    return Column(
+      children: personalities.map((p) {
         final isSelected = p.type == current;
         return GestureDetector(
           onTap: () => notifier.setPersonalityType(p.type),
@@ -356,7 +360,7 @@ class _PersonalityStep extends StatelessWidget {
             ),
           ),
         );
-      },
+      }).toList(),
     );
   }
 }

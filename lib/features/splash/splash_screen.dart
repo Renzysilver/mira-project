@@ -106,34 +106,27 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       ),
                       const SizedBox(height: 64),
 
-                      // Progress bar
-                      SizedBox(
-                        width: 220,
-                        child: AnimatedBuilder(
-                          animation: _progress,
-                          builder: (_, __) => Column(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: _progress.value,
-                                  minHeight: 3,
-                                  backgroundColor: Colors.white.withOpacity(0.08),
-                                  valueColor: const AlwaysStoppedAnimation<Color>(
-                                    AppTheme.magentaAccent,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                '${(_progress.value * 100).toInt()}%',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppTheme.textSecondary.withOpacity(0.7),
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                            ],
+                      // Circular glowing progress indicator
+                      // Glow intensity scales with progress: 0% = soft,
+                      // 100% = max glow before transition.
+                      AnimatedBuilder(
+                        animation: _progress,
+                        builder: (_, __) => _GlowingCircularProgress(
+                          progress: _progress.value,
+                          size: 96,
+                          strokeWidth: 3,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Percentage text
+                      AnimatedBuilder(
+                        animation: _progress,
+                        builder: (_, __) => Text(
+                          '${(_progress.value * 100).toInt()}%',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textSecondary.withOpacity(0.7),
+                            letterSpacing: 2,
                           ),
                         ),
                       ),
@@ -211,4 +204,117 @@ class _BlossomPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Circular progress indicator with a pink aurora glow that intensifies
+/// as progress increases. Uses CustomPainter for the ring + sweep, and
+/// a layered radial gradient for the glow.
+class _GlowingCircularProgress extends StatelessWidget {
+  final double progress; // 0.0 to 1.0
+  final double size;
+  final double strokeWidth;
+
+  const _GlowingCircularProgress({
+    required this.progress,
+    required this.size,
+    required this.strokeWidth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Glow intensity scales with progress: 0% = 0.15 opacity, 100% = 0.6
+    final glowOpacity = 0.15 + (progress * 0.45);
+    // Glow radius grows with progress too
+    final glowRadius = size * (0.6 + progress * 0.2);
+
+    return SizedBox(
+      width: size + 40, // extra room for the glow
+      height: size + 40,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Glow layer — radial gradient behind the ring
+          Container(
+            width: glowRadius * 2,
+            height: glowRadius * 2,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  AppTheme.magentaAccent.withOpacity(glowOpacity),
+                  AppTheme.moonRose.withOpacity(glowOpacity * 0.5),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.5, 1.0],
+              ),
+            ),
+          ),
+          // The ring itself
+          CustomPaint(
+            size: Size(size, size),
+            painter: _CircularProgressPainter(
+              progress: progress,
+              strokeWidth: strokeWidth,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CircularProgressPainter extends CustomPainter {
+  final double progress;
+  final double strokeWidth;
+
+  _CircularProgressPainter({
+    required this.progress,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    // Background track
+    final bgPaint = Paint()
+      ..color = Colors.white.withOpacity(0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Progress arc — starts at top (-90°), sweeps clockwise
+    final progressPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    // Gradient sweep from magenta to moonRose
+    progressPaint.shader = SweepGradient(
+      startAngle: -pi / 2,
+      endAngle: -pi / 2 + (2 * pi * progress.clamp(0.0, 1.0)),
+      colors: [
+        AppTheme.magentaAccent,
+        AppTheme.moonRose,
+      ],
+      stops: const [0.0, 1.0],
+      transform: GradientRotation(-pi / 2),
+    ).createShader(Rect.fromCircle(center: center, radius: radius));
+
+    // Draw the arc only if there's progress
+    if (progress > 0.001) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -pi / 2,
+        2 * pi * progress.clamp(0.0, 1.0),
+        false,
+        progressPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CircularProgressPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
