@@ -15,7 +15,11 @@ dependencies:
   firebase_auth: ^5.1.0
   google_sign_in: ^6.2.1
   cloud_firestore: ^5.6.12
-  supabase_flutter: ^2.8.0
+  # NOTE: supabase_flutter removed — it pulls in passkeys_web which
+  # crashes Chrome on startup with 'Passkeys Web SDK not loaded'.
+  # Will re-add via the lower-level `supabase` package when we actually
+  # migrate to Supabase in Phase 3. The SQL schema + storage interface
+  # in lib/core/storage/ stay in place — they don't depend on the dep.
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   flutter_secure_storage: ^9.2.0
