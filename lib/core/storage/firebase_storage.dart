@@ -478,4 +478,30 @@ class FirestoreStorage {
       'endedAt': FieldValue.serverTimestamp(),
     });
   }
+
+  // ---------------------------------------------------------------------------
+  // Phase D — clear chat history (active companion or all companions)
+  // ---------------------------------------------------------------------------
+
+  /// Clear ALL messages for a single companion.
+  Future<void> clearAllCompanionMessages(String companionId) async {
+    final snap = await _companionMessagesCol(companionId).get();
+    final batch = _db.batch();
+    for (final doc in snap.docs) batch.delete(doc.reference);
+    await batch.commit();
+  }
+
+  /// Clear messages for every companion the user has.
+  /// Used by the 'Clear all chats' option in settings.
+  Future<void> clearAllChatsForAllCompanions() async {
+    final companionsSnap = await _companionsCol.get();
+    for (final companionDoc in companionsSnap.docs) {
+      final msgSnap = await _companionMessagesCol(companionDoc.id).get();
+      final batch = _db.batch();
+      for (final doc in msgSnap.docs) batch.delete(doc.reference);
+      await batch.commit();
+    }
+  
+  }
 }
+

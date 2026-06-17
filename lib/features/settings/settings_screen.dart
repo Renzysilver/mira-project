@@ -165,6 +165,52 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+
+                // Data management section
+                _SectionLabel(label: 'Data'),
+                const SizedBox(height: 10),
+                _GlassCard(
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.cleaning_services_outlined,
+                            color: AppTheme.textSecondary, size: 20),
+                        title: const Text('Clear active companion chat',
+                            style: TextStyle(
+                                color: AppTheme.moonWhite, fontSize: 14)),
+                        subtitle: const Text(
+                            'Deletes all messages with the current companion',
+                            style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 11)),
+                        trailing: const Icon(Icons.chevron_right,
+                            color: AppTheme.textSecondary, size: 18),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        onTap: () => _confirmClearActiveChat(context, ref),
+                      ),
+                      const Divider(height: 1, color: AppTheme.glassBorder),
+                      ListTile(
+                        leading: const Icon(Icons.delete_sweep_outlined,
+                            color: AppTheme.errorRed, size: 20),
+                        title: const Text('Clear ALL chats',
+                            style: TextStyle(
+                                color: AppTheme.errorRed, fontSize: 14)),
+                        subtitle: const Text(
+                            'Permanently deletes messages with every companion',
+                            style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 11)),
+                        trailing: const Icon(Icons.chevron_right,
+                            color: AppTheme.errorRed, size: 18),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        onTap: () => _confirmClearAllChats(context, ref),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 32),
 
                 // Sign out
@@ -216,6 +262,113 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // ── Chat clear confirmations ────────────────────────────────────
+
+  void _confirmClearActiveChat(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceDark,
+        title: const Text('Clear chat with this companion?',
+            style: TextStyle(color: AppTheme.moonWhite, fontSize: 16)),
+        content: const Text(
+            'All messages with the current companion will be permanently '
+            'deleted from the database. This cannot be undone.',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _clearActiveChat(context, ref);
+            },
+            child: const Text('Clear',
+                style: TextStyle(color: AppTheme.errorRed)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmClearAllChats(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceDark,
+        title: const Text('Clear ALL companion chats?',
+            style: TextStyle(color: AppTheme.moonWhite, fontSize: 16)),
+        content: const Text(
+            'Every message with every companion will be permanently deleted '
+            'from the database. This cannot be undone.',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _clearAllChats(context, ref);
+            },
+            child: const Text('Clear all',
+                style: TextStyle(color: AppTheme.errorRed)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _clearActiveChat(BuildContext context, WidgetRef ref) async {
+    final storage = ref.read(firestoreStorageProvider);
+    final companionId = ref.read(personaProvider).companionId;
+    if (storage == null || companionId == null) {
+      _showToast(context, 'No active companion', isError: true);
+      return;
+    }
+    try {
+      await storage.clearAllCompanionMessages(companionId);
+      _showToast(context, 'Chat cleared');
+    } catch (e) {
+      _showToast(context, 'Failed: $e', isError: true);
+    }
+  }
+
+  Future<void> _clearAllChats(BuildContext context, WidgetRef ref) async {
+    final storage = ref.read(firestoreStorageProvider);
+    if (storage == null) {
+      _showToast(context, 'Not signed in', isError: true);
+      return;
+    }
+    try {
+      await storage.clearAllChatsForAllCompanions();
+      _showToast(context, 'All chats cleared');
+    } catch (e) {
+      _showToast(context, 'Failed: $e', isError: true);
+    }
+  }
+
+  void _showToast(BuildContext context, String msg, {bool isError = false}) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg,
+            style: TextStyle(
+                color: isError ? AppTheme.errorRed : AppTheme.moonWhite,
+                fontSize: 12)),
+        backgroundColor:
+            isError ? Colors.red.withOpacity(0.9) : AppTheme.surfaceDark,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
       ),
     );
   }

@@ -1,18 +1,20 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/storage/firebase_storage.dart';
+import '../core/relationship/milestones.dart';
+import '../core/utils/logger.dart';
 import '../models/persona_model.dart';
 import '../models/relationship_model.dart';
-import '../core/utils/logger.dart';
 import '../providers/auth_provider.dart';
 import '../providers/companions_provider.dart';
 
-/// Persona + relationship stats for the currently-active companion.
+/// Persona + relationship stats + milestones for the active companion.
 ///
-/// Now loads from the companion doc directly (users/{uid}/companions/{id})
-/// instead of the legacy /persona/current path. This fixes the bug where
-/// Luna would say "I'm Mira" because the old code read the default
-/// persona doc regardless of which companion was active.
+/// Loads from users/{uid}/companions/{activeId} directly. Affection
+/// increments on chat/call. Milestones auto-unlock when stats cross
+/// thresholds. Newly-unlocked milestones are exposed via
+/// [newlyUnlockedMilestonesProvider] so the UI can celebrate.
 final personaProvider =
     StateNotifierProvider<PersonaNotifier, PersonaState>((ref) {
   final storage = ref.watch(firestoreStorageProvider);
@@ -26,12 +28,14 @@ class PersonaState {
   final RelationshipModel relationship;
   final bool isLoading;
   final String? companionId;
+  final List<String> milestones;
 
   const PersonaState({
     this.persona = const PersonaModel(),
     this.relationship = const RelationshipModel(),
     this.isLoading = false,
     this.companionId,
+    this.milestones = const [],
   });
 
   PersonaState copyWith({
@@ -39,30 +43,38 @@ class PersonaState {
     RelationshipModel? relationship,
     bool? isLoading,
     String? companionId,
+    List<String>? milestones,
   }) {
     return PersonaState(
       persona: persona ?? this.persona,
       relationship: relationship ?? this.relationship,
       isLoading: isLoading ?? this.isLoading,
       companionId: companionId ?? this.companionId,
+      milestones: milestones ?? this.milestones,
     );
   }
 }
+
+/// Stream of milestones that were just unlocked — UI listens to this
+/// to show a celebration SnackBar.
+///
+/// Implementation note: for now, the chat screen calls
+/// personaProvider.notifier.checkMilestones(memoryCount: ...) after
+/// each send, and shows a SnackBar for each newly-unlocked milestone.
+/// This provider exists for future refactoring into a proper stream.
+final newlyUnlockedMilestonesProvider =
+    Provider<Stream<Milestone>>((ref) => const Stream.empty());
 
 class PersonaNotifier extends StateNotifier<PersonaState> {
   final FirestoreStorage? _storage;
   final String? _companionId;
   StreamSubscription? _sub;
+  List<String> _lastSeenMilestones = const [];
 
   PersonaNotifier(this._storage, this._companionId)
       : super(const PersonaState()) {
     if (_storage == null) return;
-    if (_companionId == null) {
-      // No active companion yet (e.g. fresh signup before default companion
-      // finishes creating). Show defaults — the provider will rebuild when
-      // activeCompanionProvider fires.
-      return;
-    }
+    if (_companionId == null) return;
     _subscribe();
   }
 
@@ -75,24 +87,23 @@ class PersonaNotifier extends StateNotifier<PersonaState> {
           state = state.copyWith(isLoading: false);
           return;
         }
-        // Build PersonaModel from the companion doc.
-        // The companion doc has snake_case fields (personality_type,
-        // current_mood, flirt_enabled, etc.) — PersonaModel.fromJson
-        // expects those keys.
         final persona = PersonaModel.fromJson(data);
-        // Relationship stats: the companion doc may or may not have
-        // relationship_stats embedded; for now use defaults. Phase D
-        // will add a separate relationship_stats subcollection.
         final rawStats = data['relationship_stats'];
         final relationship = rawStats != null
             ? RelationshipModel.fromJson(
                 Map<String, dynamic>.from(rawStats as Map))
             : const RelationshipModel();
+        final milestones = (data['milestones'] as List<dynamic>? ?? [])
+            .map((e) => e as String)
+            .toList();
+
+        _lastSeenMilestones = milestones;
         state = PersonaState(
           persona: persona,
           relationship: relationship,
           isLoading: false,
           companionId: _companionId,
+          milestones: milestones,
         );
       },
       onError: (e) {
@@ -112,7 +123,6 @@ class PersonaNotifier extends StateNotifier<PersonaState> {
   Future<void> updatePersona(PersonaModel persona) async {
     if (_storage == null || !mounted || _companionId == null) return;
     state = state.copyWith(persona: persona);
-    // Write back to the companion doc — only the persona fields.
     await _storage.saveCompanionFields(_companionId!, persona.toJson());
   }
 
@@ -125,31 +135,91 @@ class PersonaNotifier extends StateNotifier<PersonaState> {
   Future<void> updateMood(AvatarMood mood) async =>
       updatePersona(state.persona.copyWith(currentMood: mood));
 
-  Future<void> toggleFlirtMode() async =>
-      updatePersona(state.persona.copyWith(flirtEnabled: !state.persona.flirtEnabled));
+  Future<void> toggleFlirtMode() async => updatePersona(state.persona
+      .copyWith(flirtEnabled: !state.persona.flirtEnabled));
 
-  Future<void> toggleFriendshipMode() async =>
-      updatePersona(state.persona.copyWith(friendshipMode: !state.persona.friendshipMode));
+  Future<void> toggleFriendshipMode() async => updatePersona(state.persona
+      .copyWith(friendshipMode: !state.persona.friendshipMode));
 
   // ── Relationship stat writes ──────────────────────────────────────
   Future<void> _updateStats(RelationshipModel updated) async {
     if (_storage == null || !mounted || _companionId == null) return;
     state = state.copyWith(relationship: updated);
-    // Write relationship_stats as a sub-map on the companion doc.
     await _storage.saveCompanionFields(
         _companionId!, {'relationship_stats': updated.toJson()});
   }
 
-  Future<void> incrementMessageCount() async => _updateStats(
-      state.relationship.copyWith(messagesSent: state.relationship.messagesSent + 1));
+  /// Increment message count by 1, bump affection by 1, and check
+  /// milestones. Called by chatProvider on every user message.
+  Future<void> incrementMessageCount() async {
+    final newStats = state.relationship.copyWith(
+        messagesSent: state.relationship.messagesSent + 1,
+        affectionLevel:
+            (state.relationship.affectionLevel + 1).clamp(0, 100));
+    await _updateStats(newStats);
+    await _checkMilestones(memoryCount: _lastSeenMilestones.length);
+  }
 
-  Future<void> incrementCallCount() async => _updateStats(
-      state.relationship.copyWith(callsMade: state.relationship.callsMade + 1));
+  /// Increment call count, bump affection by 3, check milestones.
+  /// Called by callProvider.endCall().
+  Future<void> incrementCallCount() async {
+    final newStats = state.relationship.copyWith(
+        callsMade: state.relationship.callsMade + 1,
+        affectionLevel:
+            (state.relationship.affectionLevel + 3).clamp(0, 100));
+    await _updateStats(newStats);
+    await _checkMilestones(memoryCount: _lastSeenMilestones.length);
+  }
 
+  /// Manually adjust affection (e.g. for future 'gift' feature).
   Future<void> updateAffection(int change) async => _updateStats(
       state.relationship.copyWith(
-          affectionLevel: (state.relationship.affectionLevel + change).clamp(0, 100)));
+          affectionLevel:
+              (state.relationship.affectionLevel + change).clamp(0, 100)));
 
-  Future<void> setStartDate() async => _updateStats(
-      state.relationship.copyWith(startDate: DateTime.now().toIso8601String()));
+  Future<void> setStartDate() async => _updateStats(state.relationship
+      .copyWith(startDate: DateTime.now().toIso8601String()));
+
+  /// Re-check milestones with the current stats. Called after any
+  /// stat change. [memoryCount] is passed in by the caller because
+  /// memory facts live in a separate doc.
+  Future<List<Milestone>> _checkMilestones({required int memoryCount}) async {
+    if (_companionId == null) return [];
+    final result = MilestoneChecker.check(
+      messagesSent: state.relationship.messagesSent,
+      callsMade: state.relationship.callsMade,
+      affectionLevel: state.relationship.affectionLevel,
+      streakDays: state.relationship.streakDays,
+      memoryCount: memoryCount,
+      alreadyUnlocked: state.milestones,
+    );
+    if (result.unlockedNow.isEmpty) return [];
+
+    // Persist the new milestones list to Firestore.
+    await _storage!.saveCompanionFields(
+        _companionId!, {'milestones': result.allUnlocked});
+    state = state.copyWith(milestones: result.allUnlocked);
+
+    // Return the newly-unlocked Milestone objects so the UI can
+    // celebrate them.
+    return result.unlockedNow
+        .map((id) => MilestoneDefinitions.byId(id))
+        .whereType<Milestone>()
+        .toList();
+  }
+
+  /// External entry point — chat screen calls this after sending a
+  /// message so we can re-check milestones with the latest memory count.
+  /// Returns the list of newly-unlocked milestones (if any).
+  Future<List<Milestone>> checkMilestones({required int memoryCount}) async {
+    return _checkMilestones(memoryCount: memoryCount);
+  }
+
+  /// List of currently-unlocked milestones as full Milestone objects
+  /// (with icon, color, etc.) — used by the persona screen to render
+  /// the badges section.
+  List<Milestone> get unlockedMilestoneObjects => state.milestones
+      .map((id) => MilestoneDefinitions.byId(id))
+      .whereType<Milestone>()
+      .toList();
 }

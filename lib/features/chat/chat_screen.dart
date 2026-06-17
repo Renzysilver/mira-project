@@ -7,8 +7,10 @@ import 'package:intl/intl.dart';
 
 import '../../core/assistant/command_registry.dart';
 import '../../core/assistant/reminder_service.dart';
+import '../../core/relationship/milestones.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/persona_provider.dart';
+import '../../services/memory_service.dart' show memoryFactsProvider;
 import '../../widgets/chat_bubble.dart';
 import '../../widgets/typing_indicator.dart';
 import '../../widgets/mira_avatar.dart';
@@ -70,6 +72,75 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ref.read(personaProvider.notifier).incrementMessageCount();
     ref.read(personaProvider.notifier).updateAffection(1);
     _scrollToBottom();
+
+    // After sending, check if any new milestones unlocked.
+    // Wait a beat so the affection increment above has propagated.
+    Future.delayed(const Duration(milliseconds: 200), () async {
+      if (!mounted) return;
+      final memoryFacts = ref.read(memoryFactsProvider);
+      final memoryCount = memoryFacts.maybeWhen(
+        data: (list) => list.length,
+        orElse: () => 0,
+      );
+      final newlyUnlocked = await ref
+          .read(personaProvider.notifier)
+          .checkMilestones(memoryCount: memoryCount);
+      for (final milestone in newlyUnlocked) {
+        _showMilestoneCelebration(milestone);
+      }
+    });
+  }
+
+  /// Display a celebratory SnackBar when a milestone unlocks.
+  void _showMilestoneCelebration(Milestone milestone) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: milestone.color.withOpacity(0.2),
+                border: Border.all(color: milestone.color, width: 1.5),
+              ),
+              child: Icon(milestone.icon, color: milestone.color, size: 16),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Achievement unlocked!',
+                      style: TextStyle(
+                          color: milestone.color,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1)),
+                  const SizedBox(height: 2),
+                  Text(milestone.title,
+                      style: const TextStyle(
+                          color: AppTheme.moonWhite,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500)),
+                  Text(milestone.description,
+                      style: TextStyle(
+                          color: AppTheme.textSecondary.withOpacity(0.8),
+                          fontSize: 10)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppTheme.surfaceDark,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
   }
 
   /// Display a system message as a SnackBar — temporary, doesn't pollute

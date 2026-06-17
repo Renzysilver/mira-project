@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../app/theme.dart';
+import '../../core/relationship/milestones.dart';
 import '../../models/persona_model.dart';
 import '../../providers/persona_provider.dart';
 import '../../widgets/mira_avatar.dart';
 import '../../widgets/atmosphere/atmospheric_background.dart';
 import '../../widgets/shell/main_shell.dart';
-import '../../app/theme.dart';
 
 class PersonaScreen extends ConsumerWidget {
   const PersonaScreen({super.key});
@@ -254,6 +255,12 @@ class PersonaScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: 14),
+
+                // Achievements / milestones section
+                _AchievementsSection(
+                  unlockedIds: personaState.milestones,
+                ),
               ],
             ),
           ),
@@ -379,6 +386,130 @@ class _StatRow extends StatelessWidget {
               fontSize: 13,
               color: AppTheme.moonWhite,
               fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Achievements / milestones section. Shows unlocked badges in colour,
+/// locked ones greyed out, with their unlock condition.
+class _AchievementsSection extends StatelessWidget {
+  final List<String> unlockedIds;
+  const _AchievementsSection({required this.unlockedIds});
+
+  @override
+  Widget build(BuildContext context) {
+    final unlockedSet = unlockedIds.toSet();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.glassWhite,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.glassBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.emoji_events_outlined,
+                  color: AppTheme.accentGold, size: 16),
+              const SizedBox(width: 6),
+              const Text('ACHIEVEMENTS',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textSecondary,
+                      letterSpacing: 2,
+                      fontWeight: FontWeight.w500)),
+              const Spacer(),
+              Text('${unlockedSet.length}/${MilestoneDefinitions.all.length}',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textSecondary.withOpacity(0.8))),
+            ],
+          ),
+          const SizedBox(height: 14),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 0.85,
+            ),
+            itemCount: MilestoneDefinitions.all.length,
+            itemBuilder: (_, i) {
+              final m = MilestoneDefinitions.all[i];
+              final isUnlocked = unlockedSet.contains(m.id);
+              return _MilestoneBadge(milestone: m, isUnlocked: isUnlocked);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MilestoneBadge extends StatelessWidget {
+  final Milestone milestone;
+  final bool isUnlocked;
+  const _MilestoneBadge({required this.milestone, required this.isUnlocked});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isUnlocked ? milestone.color : AppTheme.mistGray;
+    return Tooltip(
+      message: '${milestone.title}\n${milestone.description}',
+      child: Column(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isUnlocked
+                  ? milestone.color.withOpacity(0.15)
+                  : Colors.white.withOpacity(0.04),
+              border: Border.all(
+                color: isUnlocked
+                    ? milestone.color
+                    : Colors.white.withOpacity(0.1),
+                width: isUnlocked ? 1.4 : 1,
+              ),
+              boxShadow: isUnlocked
+                  ? [
+                      BoxShadow(
+                        color: milestone.color.withOpacity(0.3),
+                        blurRadius: 12,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Icon(
+              isUnlocked ? milestone.icon : Icons.lock_outline,
+              color: color,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            milestone.title,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 9,
+              color: isUnlocked
+                  ? AppTheme.moonWhite
+                  : AppTheme.textSecondary.withOpacity(0.5),
+              letterSpacing: 0.3,
+              height: 1.2,
+            ),
+          ),
         ],
       ),
     );
