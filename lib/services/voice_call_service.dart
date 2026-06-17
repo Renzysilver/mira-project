@@ -103,8 +103,9 @@ class VoiceCallService {
   /// Centralized speak method — always sets _isSpeaking flag correctly
   /// so the mic never reactivates mid-sentence.
   ///
-  /// If TTS fails, [onError] is invoked and the call is terminated —
-  /// better to fail loudly than to leave the user in silence.
+  /// If TTS fails or times out, the speaking state is force-reset so
+  /// the call can continue (return to listening) instead of getting
+  /// stuck in SPEAKING forever.
   Future<void> _speakText(String text) async {
     _isSpeaking = true;
     await _speech.stop(); // mic OFF before speaking
@@ -114,8 +115,12 @@ class VoiceCallService {
     _isSpeaking = false;
     if (!ok) {
       AppLogger.error('TTS failed for text: ${text.substring(0, text.length.clamp(0, 80))}');
-      onError?.call('Voice synthesis failed.');
-      _isCallActive = false;
+      // Don't end the call on TTS failure — just skip this response
+      // and return to listening so the user can try again.
+      if (_isCallActive) {
+        onPhaseChanged?.call(CallPhase.listening);
+        _startListening();
+      }
       return;
     }
     await Future.delayed(const Duration(milliseconds: 600));

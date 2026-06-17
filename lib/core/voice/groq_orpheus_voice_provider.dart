@@ -117,10 +117,24 @@ class GroqOrpheusVoiceProvider implements VoiceProvider {
       await _currentPlayer!.setFilePath(filePath);
       await _currentPlayer!.play();
 
-      await _currentPlayer!.playerStateStream.firstWhere(
-        (s) => s.processingState == ProcessingState.completed,
-        orElse: () => throw TimeoutException('TTS playback did not complete'),
-      );
+      // Wait for playback to complete. Use a timeout instead of
+      // orElse — orElse only fires when the stream CLOSES, which may
+      // never happen (broadcast streams stay open). Without a timeout,
+      // this await can hang forever if the player never emits
+      // 'completed', leaving the call stuck in SPEAKING state.
+      //
+      // Also listen for 'completed' OR 'idle' — some just_audio
+      // backends emit 'idle' instead of 'completed' on certain devices.
+      try {
+        await _currentPlayer!.playerStateStream
+            .firstWhere((s) =>
+                s.processingState == ProcessingState.completed ||
+                s.processingState == ProcessingState.idle)
+            .timeout(const Duration(seconds: 30));
+      } on TimeoutException {
+        AppLogger.warning(
+            'TTS playback timed out after 30s — treating as complete');
+      }
 
       await _currentPlayer?.dispose();
       _currentPlayer = null;

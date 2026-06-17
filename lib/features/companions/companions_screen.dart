@@ -119,10 +119,13 @@ class CompanionsScreen extends ConsumerWidget {
                           eyeColor: c.eyeColor,
                           interestCount: c.interests.length,
                           isActive: isActive,
-                          onTap: () async {
+                          onTap: () {
+                            // Tap opens the companion's profile (persona screen).
+                            // Also set as active so the profile shows the right data.
                             if (!isActive) {
-                              await switcher.setActive(c.id);
+                              switcher.setActive(c.id);
                             }
+                            context.go('/persona');
                           },
                           onLongPress: () => _showCompanionMenu(
                               context, ref, c, isActive, storage),

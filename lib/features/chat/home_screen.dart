@@ -20,11 +20,18 @@ final _callHistoryProvider = StreamProvider.autoDispose<List<Map<String, dynamic
   return storage.watchCompanionCallLogs(companionId);
 });
 
-String _personalityLabel(PersonalityType t) => switch (t) {
-      PersonalityType.sweet => 'Sweet & caring',
-      PersonalityType.tsundere => 'Tsundere',
-      PersonalityType.intellectual => 'Intellectual',
-    };
+String _personalityLabel(PersonaModel persona) {
+  // Use the companion's specific traits if available (e.g. "Adventurous · Confident · Playful").
+  // Fall back to the base type label if no specific traits stored.
+  if (persona.personalityTraits.isNotEmpty) {
+    return persona.personalityTraits.join(' · ');
+  }
+  return switch (persona.personalityType) {
+    PersonalityType.sweet => 'Sweet & caring',
+    PersonalityType.tsundere => 'Tsundere',
+    PersonalityType.intellectual => 'Intellectual',
+  };
+}
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -388,7 +395,7 @@ class _HeroCompanionCard extends StatelessWidget {
                               letterSpacing: 1.5),
                         ),
                         const SizedBox(height: 4),
-                        Text(_personalityLabel(persona.personalityType),
+                        Text(_personalityLabel(persona),
                             style: const TextStyle(
                                 fontSize: 11,
                                 color: AppTheme.textSecondary,

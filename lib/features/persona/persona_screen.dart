@@ -151,7 +151,7 @@ class PersonaScreen extends ConsumerWidget {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: _personalityTags(persona.personalityType)
+                        children: _personalityTags(persona)
                             .map((tag) => _TagChip(label: tag))
                             .toList(),
                       ),
@@ -269,8 +269,15 @@ class PersonaScreen extends ConsumerWidget {
     );
   }
 
-  List<String> _personalityTags(PersonalityType t) {
-    switch (t) {
+  List<String> _personalityTags(PersonaModel persona) {
+    // Use the companion's specific traits if they were set in the
+    // creator (e.g. ['Adventurous', 'Confident', 'Playful']).
+    // Fall back to generic tags based on personalityType only if
+    // no specific traits are stored.
+    if (persona.personalityTraits.isNotEmpty) {
+      return persona.personalityTraits;
+    }
+    switch (persona.personalityType) {
       case PersonalityType.sweet:
         return ['Gentle', 'Caring', 'Playful'];
       case PersonalityType.tsundere:
