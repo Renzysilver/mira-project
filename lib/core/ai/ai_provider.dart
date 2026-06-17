@@ -64,4 +64,19 @@ abstract class AiProvider {
     required List<String> memoryFacts,
     String? userName,
   });
+
+  /// Low-level chat completion with a raw system prompt.
+  ///
+  /// Used by assistant commands (/summarize, /translate, /draft) that
+  /// need to bypass the companion persona system and use a task-specific
+  /// system prompt instead.
+  ///
+  /// [messages] should be the user message(s) only — the implementation
+  /// prepends the [systemPrompt].
+  Future<String> rawCompletion({
+    required String systemPrompt,
+    required List<Map<String, String>> messages,
+    double temperature = 0.5,
+    int maxTokens = 1024,
+  });
 }

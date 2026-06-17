@@ -7,6 +7,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'app/app.dart';
 import 'core/constants/app_constants.dart';
 import 'core/utils/logger.dart';
+import 'core/assistant/command_registry.dart';
+import 'core/assistant/local_commands.dart';
+import 'core/assistant/ai_commands.dart';
+import 'core/assistant/reminder_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -38,10 +42,24 @@ void main() async {
       Hive.openBox(AppConstants.settingsBox),
       Hive.openBox(AppConstants.memoriesBox),
       Hive.openBox(AppConstants.callLogsBox),
+      Hive.openBox('reminders'),
     ]);
   } catch (e, stack) {
     AppLogger.error('Hive init failed', e, stack);
   }
+
+  // Register assistant commands (slash commands).
+  // Local commands work offline; AI commands need a configured AI provider.
+  CommandRegistry.register(HelpCommand());
+  CommandRegistry.register(TimeCommand());
+  CommandRegistry.register(DateCommand());
+  CommandRegistry.register(JokeCommand());
+  CommandRegistry.register(QuoteCommand());
+  CommandRegistry.register(SummarizeCommand());
+  CommandRegistry.register(TranslateCommand());
+  CommandRegistry.register(DraftCommand());
+  // RemindCommand is registered by the reminderServiceProvider consumer
+  // in app.dart — it needs the service instance.
 
   AppLogger.info('Mirabel initialized');
   runApp(const ProviderScope(child: MiraApp()));

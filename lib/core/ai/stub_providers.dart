@@ -39,6 +39,15 @@ class OpenAiProvider implements AiProvider {
     String? userName,
   }) =>
       throw UnimplementedError('OpenAI provider not implemented');
+
+  @override
+  Future<String> rawCompletion({
+    required String systemPrompt,
+    required List<Map<String, String>> messages,
+    double temperature = 0.5,
+    int maxTokens = 1024,
+  }) =>
+      throw UnimplementedError('OpenAI provider not implemented');
 }
 
 class AnthropicProvider implements AiProvider {
@@ -68,6 +77,15 @@ class AnthropicProvider implements AiProvider {
     String? userName,
   }) =>
       throw UnimplementedError('Anthropic provider not implemented');
+
+  @override
+  Future<String> rawCompletion({
+    required String systemPrompt,
+    required List<Map<String, String>> messages,
+    double temperature = 0.5,
+    int maxTokens = 1024,
+  }) =>
+      throw UnimplementedError('Anthropic provider not implemented');
 }
 
 class GeminiProvider implements AiProvider {
@@ -95,6 +113,15 @@ class GeminiProvider implements AiProvider {
     required PersonaModel persona,
     required List<String> memoryFacts,
     String? userName,
+  }) =>
+      throw UnimplementedError('Gemini provider not implemented');
+
+  @override
+  Future<String> rawCompletion({
+    required String systemPrompt,
+    required List<Map<String, String>> messages,
+    double temperature = 0.5,
+    int maxTokens = 1024,
   }) =>
       throw UnimplementedError('Gemini provider not implemented');
 }

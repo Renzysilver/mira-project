@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/assistant/command_registry.dart';
+import '../../core/assistant/reminder_service.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/persona_provider.dart';
 import '../../widgets/chat_bubble.dart';
@@ -22,24 +26,73 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
+  final _focusNode = FocusNode();
   bool _characterVisible = true;
+  StreamSubscription<Reminder>? _reminderSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // Show fired reminders as system messages in chat.
+    _reminderSub =
+        ref.read(reminderServiceProvider).firedReminders.listen((reminder) {
+      _showSystemMessage('⏰ Reminder: ${reminder.text}');
+    });
+  }
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _focusNode.dispose();
+    _reminderSub?.cancel();
     super.dispose();
   }
 
-  void _sendMessage() {
+  void _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
+    _messageController.clear();
+
+    // Slash-command handling — bypasses companion AI, returns a system
+    // message instead.
+    if (CommandRegistry.isCommand(text)) {
+      final result = await CommandRegistry.execute(text);
+      if (result.sideEffect != null) await result.sideEffect!();
+      if (result.displayText != null) {
+        _showSystemMessage(result.displayText!, isError: result.isError);
+      }
+      return;
+    }
+
     final persona = ref.read(personaProvider).persona;
     ref.read(chatProvider.notifier).sendMessage(text, persona);
     ref.read(personaProvider.notifier).incrementMessageCount();
     ref.read(personaProvider.notifier).updateAffection(1);
-    _messageController.clear();
     _scrollToBottom();
+  }
+
+  /// Display a system message as a SnackBar — temporary, doesn't pollute
+  /// the chat history. (Could be promoted to a real system message bubble
+  /// in a future iteration.)
+  void _showSystemMessage(String text, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          text,
+          style: TextStyle(
+            color: isError ? AppTheme.errorRed : AppTheme.moonWhite,
+            fontSize: 12,
+            height: 1.4,
+          ),
+        ),
+        backgroundColor:
+            isError ? Colors.red.withOpacity(0.9) : AppTheme.surfaceDark,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 8),
+      ),
+    );
   }
 
   void _scrollToBottom() {
@@ -54,134 +107,257 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  /// Handle Enter key — send on Enter, newline on Shift+Enter.
+  /// On web, this is wired via KeyboardEventHandler below.
+  void _onKey(KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.enter &&
+        !HardwareKeyboard.instance.isShiftPressed) {
+      _sendMessage();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final chatState = ref.watch(chatProvider);
     final personaState = ref.watch(personaProvider);
     final screenWidth = MediaQuery.of(context).size.width;
-    // Only show character on wide screens (mobile gets full-width chat)
     final showCharacter = _characterVisible && screenWidth > 700;
 
-    return MainShell(
-      currentIndex: 0,
-      child: Stack(
-        children: [
-          // ── Layer 1: Base background gradient (aurora palette) ───────────
-          // Matches AtmosphericBackground so chat doesn't feel out of place
-          // alongside the other screens.
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF4A1C8A),
-                    Color(0xFF1A1A3A),
-                    Color(0xFF2A2A5A),
-                    Color(0xFF050510),
-                  ],
-                  stops: [0.0, 0.4, 0.7, 1.0],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-            ),
-          ),
-
-          // ── Layer 2: Full-screen character background ───────────────────
-          // The character fills the ENTIRE screen behind everything.
-          // Chat content sits on top via the gradient overlay + Layer 4.
-          if (showCharacter)
+    return KeyboardListener(
+      focusNode: _focusNode,
+      onKeyEvent: _onKey,
+      child: MainShell(
+        currentIndex: 0,
+        child: Stack(
+          children: [
+            // ── Layer 1: Base background gradient (aurora palette) ───────
             Positioned.fill(
-              child: IgnorePointer(
-                child: const MiraAvatarWidget(),
-              ),
-            ),
-
-          // ── Layer 3: Left-biased gradient overlay for readability ───────
-          // Strong on the left (where chat bubbles are), fades to
-          // transparent on the right so the character is fully visible.
-          if (showCharacter)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppTheme.midnightBlue.withOpacity(0.92),
-                        AppTheme.midnightBlue.withOpacity(0.55),
-                        Colors.transparent,
-                      ],
-                      stops: const [0.0, 0.55, 0.85],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFF4A1C8A),
+                      Color(0xFF1A1A3A),
+                      Color(0xFF2A2A5A),
+                      Color(0xFF050510),
+                    ],
+                    stops: [0.0, 0.4, 0.7, 1.0],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                   ),
                 ),
               ),
             ),
 
-          // ── Layer 4: Chat UI (full width) ───────────────────────────────
-          SafeArea(
-            child: Column(
+            // ── Layer 2: Full-screen character background ────────────────
+            if (showCharacter)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: const MiraAvatarWidget(),
+                ),
+              ),
+
+            // ── Layer 3: Left-biased gradient overlay ────────────────────
+            if (showCharacter)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.midnightBlue.withOpacity(0.92),
+                          AppTheme.midnightBlue.withOpacity(0.55),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.55, 0.85],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            // ── Layer 4: Chat UI ─────────────────────────────────────────
+            SafeArea(
+              child: Column(
+                children: [
+                  _ChatHeader(
+                    isTyping: chatState.isTyping,
+                    characterVisible: showCharacter,
+                    onToggleCharacter: () => setState(
+                        () => _characterVisible = !_characterVisible),
+                  ),
+
+                  // Chat messages — or empty state if no messages
+                  Expanded(
+                    child: chatState.messages.isEmpty &&
+                            !chatState.isTyping &&
+                            chatState.streamingContent.isEmpty
+                        ? _buildEmptyState(personaState.persona.name)
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.only(
+                                top: 8, bottom: 8, left: 16, right: 16),
+                            itemCount: chatState.messages.length +
+                                (chatState.isTyping ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (index == chatState.messages.length &&
+                                  chatState.isTyping) {
+                                return const Padding(
+                                  padding: EdgeInsets.only(top: 8, left: 8),
+                                  child: TypingIndicator(),
+                                );
+                              }
+                              final message = chatState.messages[index];
+                              return ChatBubble(
+                                message: message.content,
+                                isUser: message.role == 'user',
+                                time: DateFormat('h:mm a')
+                                    .format(message.timestamp),
+                              );
+                            },
+                          ),
+                  ),
+
+                  if (chatState.streamingContent.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
+                      child: ChatBubble(
+                        message: chatState.streamingContent,
+                        isUser: false,
+                        time: DateFormat('h:mm a').format(DateTime.now()),
+                      ),
+                    ),
+
+                  if (chatState.error != null)
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(chatState.error!,
+                          style:
+                              const TextStyle(color: AppTheme.errorRed))),
+
+                  _buildInputArea(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Empty state — shown when a companion has no chat history yet.
+  Widget _buildEmptyState(String companionName) {
+    final suggestions = [
+      'Hey ${companionName.isEmpty ? 'Mira' : companionName}, how are you?',
+      'Tell me about yourself',
+      'I had a long day. Can we talk?',
+      'What do you like to do for fun?',
+    ];
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Sparkle icon
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppTheme.pinkGradient,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.magentaAccent.withOpacity(0.4),
+                    blurRadius: 24,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.auto_awesome,
+                  color: Colors.white, size: 28),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Start the conversation',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w300,
+                color: AppTheme.moonWhite.withOpacity(0.9),
+                letterSpacing: 1.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Say hi to ${companionName.isEmpty ? 'Mira' : companionName} — or try a slash command:',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppTheme.textSecondary.withOpacity(0.8),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 18),
+            // Command hints
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 6,
+              runSpacing: 6,
               children: [
-                // Floating header — NO border, just content on a soft blur
-                _ChatHeader(
-                  isTyping: chatState.isTyping,
-                  characterVisible: showCharacter,
-                  onToggleCharacter: () => setState(
-                      () => _characterVisible = !_characterVisible),
-                ),
-
-                // Chat messages — full width
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.only(
-                        top: 8, bottom: 8, left: 16, right: 16),
-                    itemCount: chatState.messages.length +
-                        (chatState.isTyping ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == chatState.messages.length &&
-                          chatState.isTyping) {
-                        return const Padding(
-                          padding: EdgeInsets.only(top: 8, left: 8),
-                          child: TypingIndicator(),
-                        );
-                      }
-                      final message = chatState.messages[index];
-                      return ChatBubble(
-                        message: message.content,
-                        isUser: message.role == 'user',
-                        time: DateFormat('h:mm a')
-                            .format(message.timestamp),
-                      );
-                    },
-                  ),
-                ),
-
-                if (chatState.streamingContent.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
-                    child: ChatBubble(
-                      message: chatState.streamingContent,
-                      isUser: false,
-                      time: DateFormat('h:mm a').format(DateTime.now()),
-                    ),
-                  ),
-
-                if (chatState.error != null)
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(chatState.error!,
-                        style:
-                            const TextStyle(color: AppTheme.errorRed))),
-
-                _buildInputArea(),
+                _CommandHint('/help'),
+                _CommandHint('/time'),
+                _CommandHint('/joke'),
+                _CommandHint('/remind 5m ...'),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            // Suggested opening lines
+            const Text(
+              'SUGGESTIONS',
+              style: TextStyle(
+                  fontSize: 10,
+                  color: AppTheme.textSecondary,
+                  letterSpacing: 2,
+                  fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: suggestions.map((s) {
+                return GestureDetector(
+                  onTap: () {
+                    _messageController.text = s;
+                    _sendMessage();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: AppTheme.glassWhite,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppTheme.glassBorder),
+                    ),
+                    child: Text(
+                      s,
+                      style: const TextStyle(
+                        color: AppTheme.moonWhite,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -199,18 +375,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   borderRadius: BorderRadius.circular(28),
                   border: Border.all(color: AppTheme.glassBorder),
                 ),
-                child: TextField(
-                  controller: _messageController,
-                  style: const TextStyle(color: AppTheme.textPrimary),
-                  decoration: const InputDecoration(
-                    hintText: 'Type a message...',
-                    hintStyle:
-                        TextStyle(color: AppTheme.mistGray, fontSize: 14),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 14),
+                child: KeyboardListener(
+                  focusNode: FocusNode(), // Local focus for the field
+                  onKeyEvent: _onKey,
+                  child: TextField(
+                    controller: _messageController,
+                    style: const TextStyle(color: AppTheme.textPrimary),
+                    minLines: 1,
+                    maxLines: 4,
+                    textInputAction: TextInputAction.send,
+                    decoration: const InputDecoration(
+                      hintText: 'Type a message... (Enter to send, Shift+Enter for newline)',
+                      hintStyle: TextStyle(
+                          color: AppTheme.mistGray, fontSize: 12),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 14),
+                    ),
+                    onSubmitted: (_) => _sendMessage(),
                   ),
-                  onSubmitted: (_) => _sendMessage(),
                 ),
               ),
             ),
@@ -237,6 +420,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CommandHint extends StatelessWidget {
+  final String text;
+  const _CommandHint(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppTheme.magentaAccent.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: AppTheme.magentaAccent.withOpacity(0.3)),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+            color: AppTheme.moonRose,
+            fontSize: 10,
+            fontFamily: 'monospace',
+            letterSpacing: 0.5),
       ),
     );
   }

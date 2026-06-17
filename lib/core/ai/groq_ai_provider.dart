@@ -137,6 +137,47 @@ class GroqAiProvider implements AiProvider {
     client.close();
   }
 
+  @override
+  Future<String> rawCompletion({
+    required String systemPrompt,
+    required List<Map<String, String>> messages,
+    double temperature = 0.5,
+    int maxTokens = 1024,
+  }) async {
+    if (!isAvailable) {
+      throw StateError('Groq API key not configured');
+    }
+
+    final groqMessages = [
+      {'role': 'system', 'content': systemPrompt},
+      ...messages,
+    ];
+
+    final response = await http
+        .post(
+          Uri.parse(_baseUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ${Env.groqApiKey}',
+          },
+          body: jsonEncode({
+            'model': _model,
+            'messages': groqMessages,
+            'temperature': temperature,
+            'max_tokens': maxTokens,
+            'top_p': 1,
+          }),
+        )
+        .timeout(_timeout);
+
+    if (response.statusCode != 200) {
+      AppLogger.error(
+          'Groq rawCompletion ${response.statusCode}: ${response.body}');
+      throw Exception('AI service error: ${response.statusCode}');
+    }
+    return jsonDecode(response.body)['choices'][0]['message']['content'];
+  }
+
   /// Build the system prompt from persona + memory + user name.
   ///
   /// Extracted as a protected method so other providers can reuse it
