@@ -65,7 +65,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       currentIndex: 0,
       child: Stack(
         children: [
-          // ── Layer 1: Base background gradient ───────────────────────────
+          // ── Layer 1: Base background gradient (fallback) ────────────────
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
@@ -82,26 +82,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ),
           ),
 
-          // ── Layer 2: Character on the RIGHT, fills its column ───────────
-          // Use Align + FractionallySizedBox so the Rive widget has a
-          // definite size to render into. BoxFit.cover inside MiraAvatarWidget
-          // would crop, so we let it contain but constrain the box itself.
+          // ── Layer 2: Full-screen character background ───────────────────
+          // The character fills the ENTIRE screen behind everything.
+          // Chat content sits on top via the gradient overlay + Layer 4.
           if (showCharacter)
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              child: SizedBox(
-                width: screenWidth * 0.42,
-                child: IgnorePointer(
-                  child: const MiraAvatarWidget(),
-                ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: const MiraAvatarWidget(),
               ),
             ),
 
-          // ── Layer 3: Soft left-biased gradient overlay ──────────────────
-          // Lighter than before — just enough to keep chat readable on
-          // the left while the character shows through on the right.
+          // ── Layer 3: Left-biased gradient overlay for readability ───────
+          // Strong on the left (where chat bubbles are), fades to
+          // transparent on the right so the character is fully visible.
           if (showCharacter)
             Positioned.fill(
               child: IgnorePointer(
