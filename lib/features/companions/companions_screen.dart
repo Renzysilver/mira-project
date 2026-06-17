@@ -102,7 +102,7 @@ class CompanionsScreen extends ConsumerWidget {
                         crossAxisCount: 2,
                         mainAxisSpacing: 14,
                         crossAxisSpacing: 14,
-                        childAspectRatio: 0.85,
+                        childAspectRatio: 0.95,
                       ),
                       itemCount: companions.length,
                       itemBuilder: (_, i) {
@@ -229,7 +229,7 @@ class _CompanionCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: isActive
               ? AppTheme.magentaAccent.withOpacity(0.1)
@@ -252,12 +252,13 @@ class _CompanionCard extends StatelessWidget {
               : null,
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Avatar with hair color ring
+            // Avatar with hair color ring (smaller to prevent overflow)
             Container(
-              width: 70,
-              height: 70,
-              padding: const EdgeInsets.all(3),
+              width: 58,
+              height: 58,
+              padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: AppTheme.pinkGradient,
@@ -271,49 +272,51 @@ class _CompanionCard extends StatelessWidget {
                   color: AppTheme.midnightBlue,
                 ),
                 child: Icon(Icons.face,
-                    color: _parseColor(eyeColor), size: 32),
+                    color: _parseColor(eyeColor), size: 26),
               ),
             ),
-            const SizedBox(height: 12),
-            // Name
+            const SizedBox(height: 8),
+            // Name — handle long names with ellipsis
             Text(name,
                 style: const TextStyle(
                     color: AppTheme.moonWhite,
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    letterSpacing: 0.8)),
-            const SizedBox(height: 4),
+                    letterSpacing: 0.5),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 2),
             // Subtitle
             Text(subtitle,
                 style: const TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 11),
+                    color: AppTheme.textSecondary, fontSize: 10),
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             // Active badge or interest count
             if (isActive)
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppTheme.magentaAccent.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                       color: AppTheme.magentaAccent.withOpacity(0.5)),
                 ),
                 child: const Text('ACTIVE',
                     style: TextStyle(
                         color: AppTheme.moonRose,
-                        fontSize: 9,
+                        fontSize: 8,
                         fontWeight: FontWeight.w600,
-                        letterSpacing: 1.5)),
+                        letterSpacing: 1.2)),
               )
             else
               Text('$interestCount interests',
                   style: TextStyle(
                       color: AppTheme.textSecondary.withOpacity(0.6),
-                      fontSize: 10)),
+                      fontSize: 9)),
           ],
         ),
       ),

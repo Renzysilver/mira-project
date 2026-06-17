@@ -109,15 +109,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       // Circular glowing progress indicator
                       // Glow intensity scales with progress: 0% = soft,
                       // 100% = max glow before transition.
+                      // Size reduced to 48px (50% of original 96px) for
+                      // a more refined, premium appearance.
                       AnimatedBuilder(
                         animation: _progress,
                         builder: (_, __) => _GlowingCircularProgress(
                           progress: _progress.value,
-                          size: 96,
-                          strokeWidth: 3,
+                          size: 48,
+                          strokeWidth: 2.5,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       // Percentage text
                       AnimatedBuilder(
                         animation: _progress,
@@ -222,14 +224,16 @@ class _GlowingCircularProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Glow intensity scales with progress: 0% = 0.15 opacity, 100% = 0.6
-    final glowOpacity = 0.15 + (progress * 0.45);
-    // Glow radius grows with progress too
-    final glowRadius = size * (0.6 + progress * 0.2);
+    // Glow intensity scales strongly with progress for visual feedback:
+    // 0% = faint (0.10), 25% = slight (0.25), 50% = moderate (0.45),
+    // 75% = strong (0.65), 100% = max (0.85).
+    final glowOpacity = 0.10 + (progress * 0.75);
+    // Glow radius also grows: 0.7x to 1.1x of the circle size.
+    final glowRadius = size * (0.7 + progress * 0.4);
 
     return SizedBox(
-      width: size + 40, // extra room for the glow
-      height: size + 40,
+      width: glowRadius * 2 + 8, // room for the glow
+      height: glowRadius * 2 + 8,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -242,10 +246,10 @@ class _GlowingCircularProgress extends StatelessWidget {
               gradient: RadialGradient(
                 colors: [
                   AppTheme.magentaAccent.withOpacity(glowOpacity),
-                  AppTheme.moonRose.withOpacity(glowOpacity * 0.5),
+                  AppTheme.moonRose.withOpacity(glowOpacity * 0.6),
                   Colors.transparent,
                 ],
-                stops: const [0.0, 0.5, 1.0],
+                stops: const [0.0, 0.4, 1.0],
               ),
             ),
           ),

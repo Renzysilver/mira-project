@@ -14,25 +14,28 @@ class OnboardingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(onboardingProvider);
     final notifier = ref.read(onboardingProvider.notifier);
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
-      // resizeToAvoidBottomInset is true by default — the Scaffold
-      // shrinks when the keyboard opens. Combined with SingleChildScrollView
-      // below, this prevents the 'Bottom overflowed by N pixels' error.
+      // resizeToAvoidBottomInset defaults to true — the Scaffold
+      // automatically shrinks the body to exclude the keyboard area.
+      // Combined with SingleChildScrollView below, this keeps the
+      // focused TextField visible without manual viewInsets math.
+      resizeToAvoidBottomInset: true,
       body: AtmosphericBackground(
         child: SafeArea(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(28, 24, 28, 24 + bottomInset),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
             child: SingleChildScrollView(
+              // Ensures the input field scrolls into view when focused.
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
 
                 // Cherry blossom + brand mark
                 const _BlossomIcon(size: 36),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // Step title
                 ShaderMask(

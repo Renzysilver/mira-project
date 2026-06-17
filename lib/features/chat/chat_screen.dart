@@ -439,9 +439,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     // The floating bottom nav occupies ~86px from screen bottom
     // (20px margin + ~56px nav height + 10px internal padding).
+    // Position the input just above the nav with minimal gap.
     // When keyboard is open, viewInsets.bottom covers the nav, so we
     // only need a small gap above the keyboard.
-    final bottomPadding = bottomInset > 0 ? 8.0 + bottomInset : 90.0;
+    final bottomPadding = bottomInset > 0 ? 8.0 + bottomInset : 72.0;
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding),
