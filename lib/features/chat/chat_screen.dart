@@ -194,8 +194,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final chatState = ref.watch(chatProvider);
     final personaState = ref.watch(personaProvider);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final showCharacter = _characterVisible && screenWidth > 700;
+    // Character is shown on ALL screen sizes now — the gradient overlay
+    // handles readability. User can still toggle it off with the eye icon.
+    final showCharacter = _characterVisible;
 
     return KeyboardListener(
       focusNode: _focusNode,
@@ -323,6 +324,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   /// Empty state — shown when a companion has no chat history yet.
+  /// Wrapped in a scroll view so it never overflows on small screens.
   Widget _buildEmptyState(String companionName) {
     final suggestions = [
       'Hey ${companionName.isEmpty ? 'Mira' : companionName}, how are you?',
@@ -331,74 +333,73 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       'What do you like to do for fun?',
     ];
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Sparkle icon
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppTheme.pinkGradient,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.magentaAccent.withOpacity(0.4),
-                    blurRadius: 24,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.auto_awesome,
-                  color: Colors.white, size: 28),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Start the conversation',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w300,
-                color: AppTheme.moonWhite.withOpacity(0.9),
-                letterSpacing: 1.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Say hi to ${companionName.isEmpty ? 'Mira' : companionName} — or try a slash command:',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary.withOpacity(0.8),
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 18),
-            // Command hints
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                _CommandHint('/help'),
-                _CommandHint('/time'),
-                _CommandHint('/joke'),
-                _CommandHint('/remind 5m ...'),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Sparkle icon (smaller on mobile)
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: AppTheme.pinkGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.magentaAccent.withOpacity(0.4),
+                  blurRadius: 20,
+                  spreadRadius: 1,
+                ),
               ],
             ),
-            const SizedBox(height: 24),
-            // Suggested opening lines
-            const Text(
-              'SUGGESTIONS',
-              style: TextStyle(
-                  fontSize: 10,
-                  color: AppTheme.textSecondary,
-                  letterSpacing: 2,
-                  fontWeight: FontWeight.w500),
+            child: const Icon(Icons.auto_awesome,
+                color: Colors.white, size: 24),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Start the conversation',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w300,
+              color: AppTheme.moonWhite.withOpacity(0.9),
+              letterSpacing: 1.2,
             ),
-            const SizedBox(height: 10),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Say hi to ${companionName.isEmpty ? 'Mira' : companionName} — or try a slash command:',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppTheme.textSecondary.withOpacity(0.8),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Command hints
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _CommandHint('/help'),
+              _CommandHint('/time'),
+              _CommandHint('/joke'),
+              _CommandHint('/remind 5m ...'),
+            ],
+          ),
+          const SizedBox(height: 18),
+          // Suggested opening lines
+          const Text(
+            'SUGGESTIONS',
+            style: TextStyle(
+                fontSize: 9,
+                color: AppTheme.textSecondary,
+                letterSpacing: 2,
+                fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 8),
             Wrap(
               alignment: WrapAlignment.center,
               spacing: 8,
@@ -625,9 +626,8 @@ class _ChatHeader extends ConsumerWidget {
             ),
           ),
 
-          // Toggle character visibility (only on wide screens)
-          if (MediaQuery.of(context).size.width > 700)
-            GestureDetector(
+          // Toggle character visibility (eye icon — available on all screens)
+          GestureDetector(
               onTap: onToggleCharacter,
               child: Container(
                 width: 36,

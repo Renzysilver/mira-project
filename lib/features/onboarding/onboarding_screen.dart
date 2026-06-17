@@ -382,66 +382,69 @@ class _ConfirmStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const SizedBox(height: 40),
-        Container(
-          width: 110,
-          height: 110,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: AppTheme.pinkGradient,
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.magentaAccent.withOpacity(0.5),
-                blurRadius: 32,
-                spreadRadius: 4,
-              ),
-            ],
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 20),
+          Container(
+            width: 90,
+            height: 90,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: AppTheme.pinkGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.magentaAccent.withOpacity(0.5),
+                  blurRadius: 24,
+                  spreadRadius: 3,
+                ),
+              ],
+            ),
+            child: const Icon(Icons.auto_awesome,
+              color: Colors.white, size: 40),
           ),
-          child: const Icon(Icons.auto_awesome,
-            color: Colors.white, size: 48),
-        ),
-        const SizedBox(height: 32),
-        Text(state.aiName.isEmpty ? 'Mira' : state.aiName,
-          style: const TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w200,
-            color: AppTheme.moonWhite,
-            letterSpacing: 4)),
-        const SizedBox(height: 8),
-        const Text('is ready for you',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppTheme.textSecondary,
-            letterSpacing: 2,
-            fontStyle: FontStyle.italic)),
-        const SizedBox(height: 40),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppTheme.glassWhite,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.glassBorder),
+          const SizedBox(height: 20),
+          Text(state.aiName.isEmpty ? 'Mira' : state.aiName,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w200,
+              color: AppTheme.moonWhite,
+              letterSpacing: 4)),
+          const SizedBox(height: 6),
+          const Text('is ready for you',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.textSecondary,
+              letterSpacing: 2,
+              fontStyle: FontStyle.italic)),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.glassWhite,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.glassBorder),
+            ),
+            child: Column(
+              children: [
+                const Text('personality',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.textSecondary,
+                    letterSpacing: 2)),
+                const SizedBox(height: 8),
+                Text(_personalityName(state.personalityType),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: AppTheme.moonWhite,
+                    letterSpacing: 1)),
+              ],
+            ),
           ),
-          child: Column(
-            children: [
-              const Text('personality',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppTheme.textSecondary,
-                  letterSpacing: 2)),
-              const SizedBox(height: 8),
-              Text(_personalityName(state.personalityType),
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: AppTheme.moonWhite,
-                  letterSpacing: 1)),
-            ],
-          ),
-        ),
-      ],
+          const SizedBox(height: 20),
+        ],
+      ),
     );
   }
 
