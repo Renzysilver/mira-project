@@ -13,6 +13,9 @@ import '../models/message_model.dart';
 import 'package:uuid/uuid.dart';
 
 final voiceCallServiceProvider = Provider<VoiceCallService>((ref) {
+  // Watch memoryServiceProvider so the voice call service picks up the
+  // active companion's memory at call time. ref.read is enough because
+  // voice calls are short-lived; the user won't switch companions mid-call.
   return VoiceCallService(AiService(), ref.read(memoryServiceProvider));
 });
 

@@ -314,4 +314,101 @@ class FirestoreStorage {
   Future<void> deleteCompanion(String companionId) async {
     await _companionsCol.doc(companionId).delete();
   }
+
+  // ---------------------------------------------------------------------------
+  // Companion-scoped messages (Phase 3-C — per-companion chat history)
+  // ---------------------------------------------------------------------------
+  // Each companion has its own messages subcollection at:
+  //   users/{uid}/companions/{companionId}/messages/{messageId}
+  //
+  // Switching companions automatically swaps the chat history because
+  // chatProvider watches activeCompanionProvider and re-subscribes.
+  // ---------------------------------------------------------------------------
+
+  CollectionReference _companionMessagesCol(String companionId) =>
+      _companionsCol.doc(companionId).collection('messages');
+
+  Stream<List<Map<String, dynamic>>> watchCompanionMessages(
+    String companionId, {
+    String conversationId = 'main',
+    int limit = AppConstants.maxCachedMessages,
+  }) {
+    return _companionMessagesCol(companionId)
+        .where('conversationId', isEqualTo: conversationId)
+        .orderBy('timestamp', descending: false)
+        .limitToLast(limit)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => Map<String, dynamic>.from(d.data() as Map)..['id'] = d.id)
+            .toList());
+  }
+
+  Future<void> addCompanionMessage(
+    String companionId,
+    Map<String, dynamic> message, {
+    String conversationId = 'main',
+  }) async {
+    await _companionMessagesCol(companionId).add({
+      ...message,
+      'conversationId': conversationId,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> clearCompanionMessages(
+    String companionId, {
+    String conversationId = 'main',
+  }) async {
+    final snap = await _companionMessagesCol(companionId)
+        .where('conversationId', isEqualTo: conversationId)
+        .get();
+    final batch = _db.batch();
+    for (final doc in snap.docs) batch.delete(doc.reference);
+    await batch.commit();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Companion-scoped memories (Phase 3-C — per-companion memory)
+  // ---------------------------------------------------------------------------
+  // Each companion has its own memory doc at:
+  //   users/{uid}/companions/{companionId}/memories/facts
+  //
+  // Memories do NOT transfer between companions — Mira remembering
+  // "User likes pizza" doesn't mean Aurora knows it too.
+  // ---------------------------------------------------------------------------
+
+  DocumentReference _companionMemoriesDocFor(String companionId) =>
+      _companionsCol.doc(companionId).collection('memories').doc('facts');
+
+  Future<List<String>> getCompanionMemoryFacts(String companionId) async {
+    final snap = await _companionMemoriesDocFor(companionId).get();
+    if (!snap.exists || snap.data() == null) return [];
+    final data = Map<String, dynamic>.from(snap.data() as Map);
+    return (data['facts'] as List<dynamic>? ?? []).cast<String>();
+  }
+
+  Future<void> saveCompanionMemoryFact(String companionId, String fact) async {
+    await _companionMemoriesDocFor(companionId).set(
+      {
+        'facts': FieldValue.arrayUnion([fact]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  Future<void> clearCompanionMemoryFacts(String companionId) async {
+    await _companionMemoriesDocFor(companionId).set({
+      'facts': [],
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<List<String>> watchCompanionMemoryFacts(String companionId) {
+    return _companionMemoriesDocFor(companionId).snapshots().map((snap) {
+      if (!snap.exists || snap.data() == null) return <String>[];
+      final data = Map<String, dynamic>.from(snap.data() as Map);
+      return (data['facts'] as List<dynamic>? ?? []).cast<String>();
+    });
+  }
 }
