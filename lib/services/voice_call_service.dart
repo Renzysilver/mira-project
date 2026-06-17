@@ -49,17 +49,19 @@ class VoiceCallService {
         _ttsService = ElevenLabsService();
 
   Future<void> initialize(PersonaModel persona, String? userName, {String? voiceId}) async {
-    if (_isInitialized) return;
+    // Always update persona/voiceId even if already initialized —
+    // the user may have switched companions since the last call.
     _persona = persona;
     _userName = userName;
-    _voiceId = voiceId;  // Per-companion voice for TTS calls
+    _voiceId = voiceId;
 
-    await _speech.initialize(
-      onError: (error) => _onSpeechError(error),
-      onStatus: (status) => _onSpeechStatus(status),
-    );
-
-    _isInitialized = true;
+    if (!_isInitialized) {
+      await _speech.initialize(
+        onError: (error) => _onSpeechError(error),
+        onStatus: (status) => _onSpeechStatus(status),
+      );
+      _isInitialized = true;
+    }
   }
 
   Future<void> startCall() async {
@@ -110,6 +112,7 @@ class VoiceCallService {
     _isSpeaking = true;
     await _speech.stop(); // mic OFF before speaking
     onPhaseChanged?.call(CallPhase.speaking);
+    AppLogger.info('TTS speaking with voiceId: $_voiceId, text: ${text.substring(0, text.length.clamp(0, 50))}');
     // Pass the companion's voiceId so each companion sounds different.
     final ok = await _ttsService.speak(text, voiceId: _voiceId);
     _isSpeaking = false;

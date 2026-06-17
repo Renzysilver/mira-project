@@ -503,10 +503,9 @@ class FirestoreStorage {
     }
   
   }
-}
 
 
-  // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
   // Mira Assistant messages (separate from companion chats)
   // ---------------------------------------------------------------------------
   // Mira is the system AI assistant — NOT a companion. She has her own
@@ -540,3 +539,4 @@ class FirestoreStorage {
     for (final doc in snap.docs) batch.delete(doc.reference);
     await batch.commit();
   }
+}

@@ -74,8 +74,14 @@ class GroqOrpheusVoiceProvider implements VoiceProvider {
       }
       if (text.trim().isEmpty) return false;
 
+      // Validate voiceId — if it's not one of the known Groq voices,
+      // fall back to 'hannah' so the call doesn't fail silently.
+      final validVoices = {'hannah', 'charon', 'atlas', 'bria'};
+      final effectiveVoiceId =
+          validVoices.contains(voiceId) ? voiceId : 'hannah';
+
       AppLogger.info(
-          'TTS [$voiceId]: ${text.substring(0, text.length.clamp(0, 60))}');
+          'TTS [$effectiveVoiceId] (requested: $voiceId): ${text.substring(0, text.length.clamp(0, 60))}');
 
       final response = await http.post(
         Uri.parse(_endpoint),
@@ -85,7 +91,7 @@ class GroqOrpheusVoiceProvider implements VoiceProvider {
         },
         body: jsonEncode({
           'model': _model,
-          'voice': voiceId,
+          'voice': effectiveVoiceId,
           'input': text,
           'response_format': 'wav',
         }),
