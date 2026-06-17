@@ -85,14 +85,28 @@ class CallNotifier extends StateNotifier<CallState> {
     // spam the history with zero-duration entries from quick back-outs.
     if (_callWasStarted && state.id.isNotEmpty) {
       final personaName = _ref.read(personaProvider).persona.name;
+      final companionId = _ref.read(personaProvider).companionId;
       try {
-        await _storage?.addCallLog({
-          'personaName':
-              personaName.isNotEmpty ? personaName : 'Unknown',
-          'duration': state.durationSeconds,
-          'endedAt': FieldValue.serverTimestamp(),
-          'summary': state.lastAiSpeech,
-        });
+        // Use companion-scoped call log if we have an active companion;
+        // fall back to legacy /calls collection otherwise.
+        if (companionId != null && companionId.isNotEmpty) {
+          await _storage?.addCompanionCallLog(companionId, {
+            'personaName':
+                personaName.isNotEmpty ? personaName : 'Unknown',
+            'duration': state.durationSeconds,
+            'summary': state.lastAiSpeech,
+          });
+        } else {
+          await _storage?.addCallLog({
+            'personaName':
+                personaName.isNotEmpty ? personaName : 'Unknown',
+            'duration': state.durationSeconds,
+            'endedAt': FieldValue.serverTimestamp(),
+            'summary': state.lastAiSpeech,
+          });
+        }
+        // Bump the call count on the relationship stats
+        await _ref.read(personaProvider.notifier).incrementCallCount();
       } catch (e) {
         // Logging the call is best-effort — don't surface to the user.
         // ignore: avoid_print

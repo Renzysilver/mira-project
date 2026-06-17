@@ -35,9 +35,10 @@ final routerProvider = Provider.family<GoRouter, bool>((ref, isAuthenticated) {
       if (!isAuthenticated && !isAuthRoute && !isOnboardingRoute) {
         return '/auth/login';
       }
+      // Authenticated users land on the magnificent Mira home screen.
       if (isAuthenticated && isAuthRoute) {
         if (!onboardingComplete) return '/onboarding';
-        return '/chat';
+        return '/home';
       }
       if (isAuthenticated && !onboardingComplete && !isOnboardingRoute) {
         return '/onboarding';

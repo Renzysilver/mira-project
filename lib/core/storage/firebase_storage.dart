@@ -411,4 +411,71 @@ class FirestoreStorage {
       return (data['facts'] as List<dynamic>? ?? []).cast<String>();
     });
   }
+
+  // ---------------------------------------------------------------------------
+  // Companion doc streaming (Phase D — fix persona identity bug)
+  // ---------------------------------------------------------------------------
+  // Streams the full companion document so personaProvider can load the
+  // active companion's name + personality instead of reading from the
+  // legacy /persona/current path.
+  // ---------------------------------------------------------------------------
+
+  Stream<Map<String, dynamic>?> watchCompanionDoc(String companionId) {
+    return _companionsCol.doc(companionId).snapshots().map((snap) {
+      if (!snap.exists || snap.data() == null) return null;
+      return Map<String, dynamic>.from(snap.data() as Map)..['id'] = snap.id;
+    });
+  }
+
+  Future<Map<String, dynamic>?> getCompanionDoc(String companionId) async {
+    final snap = await _companionsCol.doc(companionId).get();
+    if (!snap.exists || snap.data() == null) return null;
+    return Map<String, dynamic>.from(snap.data() as Map)..['id'] = snap.id;
+  }
+
+
+  Future<void> saveCompanionFields(
+      String companionId, Map<String, dynamic> fields) async {
+    await _companionsCol.doc(companionId).set(
+      {...fields, 'updated_at': FieldValue.serverTimestamp()},
+      SetOptions(merge: true),
+    );
+  }
+
+  // ── Companion-scoped call logs ──────────────────────────────────────
+  // Each companion has its own call history at:
+  //   users/{uid}/companions/{companionId}/calls/{callId}
+  CollectionReference _companionCallsCol(String companionId) =>
+      _companionsCol.doc(companionId).collection('calls');
+
+  Future<List<Map<String, dynamic>>> getCompanionCallLogs(
+      String companionId) async {
+    final snap = await _companionCallsCol(companionId)
+        .orderBy('endedAt', descending: true)
+        .limit(50)
+        .get();
+    return snap.docs
+        .map((d) => Map<String, dynamic>.from(d.data() as Map)..['id'] = d.id)
+        .toList();
+  }
+
+  Stream<List<Map<String, dynamic>>> watchCompanionCallLogs(
+      String companionId) {
+    return _companionCallsCol(companionId)
+        .orderBy('endedAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) =>
+                Map<String, dynamic>.from(d.data() as Map)..['id'] = d.id)
+            .toList());
+  }
+
+  Future<void> addCompanionCallLog(
+      String companionId, Map<String, dynamic> log) async {
+    await _companionCallsCol(companionId).add({
+      ...log,
+      'endedAt': FieldValue.serverTimestamp(),
+    });
+  }
 }

@@ -16,9 +16,8 @@ class CompanionsScreen extends ConsumerWidget {
     final switcher = ref.read(companionSwitcherProvider.notifier);
 
     return MainShell(
-      // No specific tab index for this screen — use 2 (Mira tab) as
-      // the closest match. The bottom nav will show Mira as active.
-      currentIndex: 2,
+      // Companions tab is now index 1 (was 2 before bottom nav reorder)
+      currentIndex: 1,
       child: AtmosphericBackground(
         child: SafeArea(
           child: Column(

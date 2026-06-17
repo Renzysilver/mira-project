@@ -25,10 +25,10 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   static const _routes = [
     '/chat',
-    '/call',
-    '/companions', // "Mira" — companion list/switcher
+    '/companions',
+    '/home',     // "Mira" — the magnificent main home screen
     '/memory',
-    '/persona',    // Profile
+    '/persona',  // Profile
   ];
 
   void _onTap(int i) {
@@ -66,14 +66,14 @@ class _MainShellState extends ConsumerState<MainShell> {
               onTap: () => _onTap(0),
             ),
             _NavIcon(
-              icon: Icons.phone_outlined,
-              label: 'Call',
+              icon: Icons.people_outline_rounded,
+              label: 'Companions',
               isSelected: widget.currentIndex == 1,
               onTap: () => _onTap(1),
             ),
             _NavIcon(
-              icon: Icons.favorite_outline_rounded,
-              label: 'Companions',
+              icon: Icons.home_filled,
+              label: 'Mira',
               isSelected: widget.currentIndex == 2,
               isCenter: true,
               onTap: () => _onTap(2),
