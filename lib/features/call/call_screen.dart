@@ -156,12 +156,18 @@ class _CallScreenState extends ConsumerState<CallScreen>
 
                 const SizedBox(height: 24),
 
-                // Speech transcript bubble
-                if (callState.lastAiSpeech.isNotEmpty || callState.lastUserSpeech.isNotEmpty)
-                  _TranscriptBubble(
-                    userText: callState.lastUserSpeech,
-                    aiText: callState.lastAiSpeech,
-                    name: personaState.persona.name,
+                // Speech transcript bubble — wrapped in Flexible so it
+                // takes available space without overflowing when text
+                // is long. Internal SingleChildScrollView keeps long
+                // text readable without breaking the call layout.
+                if (callState.lastAiSpeech.isNotEmpty ||
+                    callState.lastUserSpeech.isNotEmpty)
+                  Flexible(
+                    child: _TranscriptBubble(
+                      userText: callState.lastUserSpeech,
+                      aiText: callState.lastAiSpeech,
+                      name: personaState.persona.name,
+                    ),
                   ),
 
                 const Spacer(flex: 2),
@@ -309,31 +315,46 @@ class _TranscriptBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (userText.isNotEmpty)
-                  Text('You: $userText',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.auroraBlue),
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
-                if (userText.isNotEmpty && aiText.isNotEmpty)
-                  const SizedBox(height: 6),
-                if (aiText.isNotEmpty)
-                  Text('$name: $aiText',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.moonRose),
-                    maxLines: 3, overflow: TextOverflow.ellipsis),
-              ],
+      // Constrain max height so the bubble never pushes the call
+      // controls off-screen. On small screens this caps at ~35% of
+      // the viewport; on tall screens at ~220px. Whichever is smaller.
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.35,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              // SingleChildScrollView lets long text scroll inside
+              // the bubble instead of overflowing the call screen.
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (userText.isNotEmpty)
+                      Text('You: $userText',
+                        style: const TextStyle(fontSize: 12, color: AppTheme.auroraBlue),
+                        // No maxLines — let it wrap fully so the user
+                        // can read the whole message via scroll.
+                        ),
+                    if (userText.isNotEmpty && aiText.isNotEmpty)
+                      const SizedBox(height: 6),
+                    if (aiText.isNotEmpty)
+                      Text('$name: $aiText',
+                        style: const TextStyle(fontSize: 12, color: AppTheme.moonRose),
+                        ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
