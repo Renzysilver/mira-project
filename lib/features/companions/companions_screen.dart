@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
+import '../../core/storage/firebase_storage.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/companions_provider.dart';
 import '../../widgets/atmosphere/atmospheric_background.dart';
 import '../../widgets/shell/main_shell.dart';
@@ -14,6 +16,7 @@ class CompanionsScreen extends ConsumerWidget {
     final companionsAsync = ref.watch(companionsProvider);
     final active = ref.watch(activeCompanionProvider);
     final switcher = ref.read(companionSwitcherProvider.notifier);
+    final storage = ref.watch(firestoreStorageProvider);
 
     return MainShell(
       // Companions tab is now index 1 (was 2 before bottom nav reorder)
@@ -121,6 +124,8 @@ class CompanionsScreen extends ConsumerWidget {
                               await switcher.setActive(c.id);
                             }
                           },
+                          onLongPress: () => _showCompanionMenu(
+                              context, ref, c, isActive, storage),
                         );
                       },
                     );
@@ -202,6 +207,145 @@ class CompanionsScreen extends ConsumerWidget {
       ),
     );
   }
+
+  /// Long-press menu: Edit / Delete / Set Active (if not active).
+  void _showCompanionMenu(
+    BuildContext context,
+    WidgetRef ref,
+    CompanionSummary companion,
+    bool isActive,
+    FirestoreStorage? storage,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        decoration: const BoxDecoration(
+          color: AppTheme.midnightBlue,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(top: BorderSide(color: AppTheme.glassBorder)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(companion.name,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w300,
+                      color: AppTheme.moonWhite,
+                      letterSpacing: 1.5)),
+              const SizedBox(height: 20),
+              if (!isActive)
+                ListTile(
+                  leading: const Icon(Icons.check_circle_outline,
+                      color: AppTheme.successGreen),
+                  title: const Text('Set as active',
+                      style: TextStyle(color: AppTheme.moonWhite)),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await ref
+                        .read(companionSwitcherProvider.notifier)
+                        .setActive(companion.id);
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined,
+                    color: AppTheme.auroraBlue),
+                title: const Text('Edit companion',
+                    style: TextStyle(color: AppTheme.moonWhite)),
+                onTap: () {
+                  Navigator.pop(context);
+                  context.go('/companion/edit/${companion.id}');
+                },
+              ),
+              ListTile(
+                leading:
+                    const Icon(Icons.delete_outline, color: AppTheme.errorRed),
+                title: const Text('Delete companion',
+                    style: TextStyle(color: AppTheme.errorRed)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDelete(context, ref, companion, storage);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    CompanionSummary companion,
+    FirestoreStorage? storage,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceDark,
+        title: Text('Delete ${companion.name}?',
+            style: const TextStyle(color: AppTheme.moonWhite, fontSize: 16)),
+        content: Text(
+            'All chat history, memories, and call logs for ${companion.name} will be permanently deleted. This cannot be undone.',
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              if (storage != null) {
+                try {
+                  await storage.deleteCompanion(companion.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${companion.name} deleted',
+                            style: const TextStyle(color: AppTheme.moonWhite)),
+                        backgroundColor: AppTheme.surfaceDark,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text('Failed: $e',
+                              style: const TextStyle(color: AppTheme.errorRed))),
+                    );
+                  }
+                }
+              }
+            },
+            child: const Text('Delete',
+                style: TextStyle(color: AppTheme.errorRed)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _CompanionCard extends StatelessWidget {
@@ -212,6 +356,7 @@ class _CompanionCard extends StatelessWidget {
   final int interestCount;
   final bool isActive;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   const _CompanionCard({
     required this.name,
@@ -221,12 +366,14 @@ class _CompanionCard extends StatelessWidget {
     required this.interestCount,
     required this.isActive,
     required this.onTap,
+    this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(12),

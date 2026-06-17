@@ -116,6 +116,71 @@ class CompanionCreatorNotifier extends StateNotifier<CompanionCreatorState> {
     }
   }
 
+  /// Update an existing companion. Returns true on success.
+  /// Requires [companionId] — the ID of the companion to update.
+  Future<bool> update(String companionId) async {
+    if (_storage == null) {
+      state = state.copyWith(error: 'Not signed in');
+      return false;
+    }
+    state = state.copyWith(isSaving: true, error: null);
+    try {
+      await _storage.saveCompanionFields(companionId, state.toFirestore());
+      AppLogger.info('Companion updated: $companionId');
+      state = state.copyWith(isSaving: false);
+      return true;
+    } catch (e, stack) {
+      AppLogger.error('Failed to update companion', e, stack);
+      state = state.copyWith(isSaving: false, error: e.toString());
+      return false;
+    }
+  }
+
+  /// Load form state from an existing companion's Firestore data.
+  /// Used by the edit screen to pre-fill the wizard.
+  void loadFromCompanion(Map<String, dynamic> data) {
+    state = CompanionCreatorState(
+      name: data['name'] as String? ?? 'Mira',
+      ageRange: data['age_range'] as String? ?? '18-22',
+      backgroundStory: data['background_story'] as String? ?? '',
+      personalityType: _parsePersonalityType(
+          data['personality_type'] as String? ?? 'sweet'),
+      personalityTraits: (data['personality_traits'] as List<dynamic>? ??
+              const ['Caring'])
+          .map((e) => e as String)
+          .toList(),
+      hairStyle: data['hair_style'] as String? ?? 'Long',
+      hairColor: data['hair_color'] as String? ?? 'Pink',
+      eyeColor: data['eye_color'] as String? ?? 'Blue',
+      faceStyle: data['face_style'] as String? ?? 'Cute',
+      clothing: data['clothing'] as String? ?? 'Casual',
+      accessories: (data['accessories'] as List<dynamic>? ?? const [])
+          .map((e) => e as String)
+          .toList(),
+      voiceProvider: data['voice_provider'] as String? ?? 'groq',
+      voiceId: data['voice_id'] as String? ?? 'hannah',
+      accent: data['accent'] as String? ?? 'Neutral International',
+      tone: data['tone'] as String? ?? 'Soft',
+      energyLevel: data['energy_level'] as String? ?? 'Medium',
+      speakingSpeed: data['speaking_speed'] as String? ?? 'Normal',
+      interests: (data['interests'] as List<dynamic>? ?? const ['Anime'])
+          .map((e) => e as String)
+          .toList(),
+    );
+  }
+
+  PersonalityType _parsePersonalityType(String s) {
+    switch (s) {
+      case 'tsundere':
+        return PersonalityType.tsundere;
+      case 'intellectual':
+        return PersonalityType.intellectual;
+      case 'sweet':
+      default:
+        return PersonalityType.sweet;
+    }
+  }
+
   /// Reset the form back to defaults (for re-use after a save).
   void reset() {
     state = const CompanionCreatorState();

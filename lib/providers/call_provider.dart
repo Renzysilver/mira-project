@@ -5,6 +5,7 @@ import '../core/storage/firebase_storage.dart';
 import '../services/voice_call_service.dart';
 import '../providers/persona_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/companions_provider.dart';
 import '../models/call_model.dart';
 
 // ── Provider ───────────────────────────────────────────────────────────────
@@ -48,8 +49,15 @@ class CallNotifier extends StateNotifier<CallState> {
 
     final persona = _ref.read(personaProvider).persona;
     final user = _ref.read(authProvider).user;
+    // Read the active companion's voiceId so each companion sounds
+    // different during voice calls.
+    final activeCompanion = _ref.read(activeCompanionProvider);
 
-    await _voiceCallService.initialize(persona, user?.displayName);
+    await _voiceCallService.initialize(
+      persona,
+      user?.displayName,
+      voiceId: activeCompanion?.voiceId,
+    );
 
     state = CallState(
       id: DateTime.now().millisecondsSinceEpoch.toString(),

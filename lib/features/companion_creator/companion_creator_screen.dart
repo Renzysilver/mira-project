@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../core/storage/firebase_storage.dart';
 import '../../models/persona_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/atmosphere/atmospheric_background.dart';
 import 'companion_creator_provider.dart';
 import 'companion_creator_state.dart';
@@ -15,13 +17,51 @@ import 'steps/voice_step.dart';
 import 'steps/interests_step.dart';
 import 'steps/review_step.dart';
 
-class CompanionCreatorScreen extends ConsumerWidget {
-  const CompanionCreatorScreen({super.key});
+class CompanionCreatorScreen extends ConsumerStatefulWidget {
+  /// If provided, the screen runs in edit mode — loads this companion's
+  /// data and calls update() instead of save() on the last step.
+  final String? editCompanionId;
+
+  const CompanionCreatorScreen({super.key, this.editCompanionId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CompanionCreatorScreen> createState() =>
+      _CompanionCreatorScreenState();
+}
+
+class _CompanionCreatorScreenState
+    extends ConsumerState<CompanionCreatorScreen> {
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // If in edit mode, load the companion's data on first frame.
+    if (widget.editCompanionId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadForEdit());
+    }
+  }
+
+  Future<void> _loadForEdit() async {
+    if (_loaded) return;
+    _loaded = true;
+    final storage = ref.read(firestoreStorageProvider);
+    if (storage == null) return;
+    try {
+      final data = await storage.getCompanionDoc(widget.editCompanionId!);
+      if (data != null) {
+        ref.read(companionCreatorProvider.notifier).loadFromCompanion(data);
+      }
+    } catch (_) {
+      // Silently fail — user sees the default form.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(companionCreatorProvider);
     final notifier = ref.read(companionCreatorProvider.notifier);
+    final isEditMode = widget.editCompanionId != null;
 
     return Scaffold(
       body: AtmosphericBackground(
@@ -58,7 +98,7 @@ class CompanionCreatorScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('CREATE COMPANION',
+                          Text(isEditMode ? 'EDIT COMPANION' : 'CREATE COMPANION',
                               style: TextStyle(
                                 fontSize: 9,
                                 color: AppTheme.textSecondary
@@ -197,10 +237,19 @@ class CompanionCreatorScreen extends ConsumerWidget {
                                   if (state.currentStep ==
                                       CompanionCreatorState.totalSteps -
                                           1) {
-                                    final id = await notifier.save();
-                                    if (id != null && context.mounted) {
-                                      notifier.reset();
-                                      context.go('/home');
+                                    if (isEditMode) {
+                                      final ok = await notifier.update(
+                                          widget.editCompanionId!);
+                                      if (ok && context.mounted) {
+                                        notifier.reset();
+                                        context.go('/companions');
+                                      }
+                                    } else {
+                                      final id = await notifier.save();
+                                      if (id != null && context.mounted) {
+                                        notifier.reset();
+                                        context.go('/home');
+                                      }
                                     }
                                   } else {
                                     notifier.nextStep();
@@ -223,7 +272,7 @@ class CompanionCreatorScreen extends ConsumerWidget {
                                   state.currentStep ==
                                           CompanionCreatorState.totalSteps -
                                               1
-                                      ? 'Create'
+                                      ? (isEditMode ? 'Save' : 'Create')
                                       : 'Next',
                                   style: const TextStyle(
                                     fontSize: 14,

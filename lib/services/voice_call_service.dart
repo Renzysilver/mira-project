@@ -33,6 +33,7 @@ class VoiceCallService {
   bool _isProcessing = false;
   int _consecutiveSttErrors = 0;
   static const int _maxSttErrors = 5;
+  String? _voiceId;  // Per-companion voice identity
 
   List<Map<String, String>> _conversationHistory = [];
   PersonaModel? _persona;
@@ -47,10 +48,11 @@ class VoiceCallService {
       : _audioService = AudioService(),
         _ttsService = ElevenLabsService();
 
-  Future<void> initialize(PersonaModel persona, String? userName) async {
+  Future<void> initialize(PersonaModel persona, String? userName, {String? voiceId}) async {
     if (_isInitialized) return;
     _persona = persona;
     _userName = userName;
+    _voiceId = voiceId;  // Per-companion voice for TTS calls
 
     await _speech.initialize(
       onError: (error) => _onSpeechError(error),
@@ -107,7 +109,8 @@ class VoiceCallService {
     _isSpeaking = true;
     await _speech.stop(); // mic OFF before speaking
     onPhaseChanged?.call(CallPhase.speaking);
-    final ok = await _ttsService.speak(text);
+    // Pass the companion's voiceId so each companion sounds different.
+    final ok = await _ttsService.speak(text, voiceId: _voiceId);
     _isSpeaking = false;
     if (!ok) {
       AppLogger.error('TTS failed for text: ${text.substring(0, text.length.clamp(0, 80))}');

@@ -60,6 +60,12 @@ final routerProvider = Provider.family<GoRouter, bool>((ref, isAuthenticated) {
       GoRoute(path: '/memory', builder: (context, state) => const MemoryScreen()),
       GoRoute(path: '/companions', builder: (context, state) => const CompanionsScreen()),
       GoRoute(path: '/companion/new', builder: (context, state) => const CompanionCreatorScreen()),
+      GoRoute(
+        path: '/companion/edit/:id',
+        builder: (context, state) => CompanionCreatorScreen(
+          editCompanionId: state.pathParameters['id'],
+        ),
+      ),
       GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
     ],
   );
