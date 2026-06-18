@@ -39,12 +39,13 @@ class _MiraSidebarState extends ConsumerState<MiraSidebar>
   }
 
   void _navigate(String route) {
+    // CRITICAL: Capture the GoRouter reference BEFORE calling onClose.
+    // onClose() removes the sidebar from the widget tree, which makes
+    // the sidebar's BuildContext invalid. GoRouter.of(context) on a
+    // dead context silently fails — that's why navigation didn't work.
+    final router = GoRouter.of(context);
     widget.onClose();
-    // Use the root navigator's context so go works even after
-    // the sidebar is dismissed.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      GoRouter.of(context).go(route);
-    });
+    router.go(route);
   }
 
   void _launchUrl(String url) async {

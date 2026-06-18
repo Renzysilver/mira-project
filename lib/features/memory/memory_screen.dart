@@ -14,7 +14,7 @@ class MemoryScreen extends ConsumerWidget {
     final memoryFacts = ref.watch(memoryFactsProvider);
 
     return MainShell(
-      currentIndex: 2,
+      currentIndex: -1,
       child: AtmosphericBackground(
         child: SafeArea(
           child: Column(

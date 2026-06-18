@@ -25,7 +25,7 @@ class PersonaScreen extends ConsumerWidget {
     final bondXpNext = (stats.affectionLevel + 1) * 100;
 
     return MainShell(
-      currentIndex: 2,
+      currentIndex: -1,
       child: AtmosphericBackground(
         child: SafeArea(
           child: SingleChildScrollView(

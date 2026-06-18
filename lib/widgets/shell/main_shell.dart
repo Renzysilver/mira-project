@@ -7,10 +7,12 @@ import '../../app/theme.dart';
 final mainShellTabIndexProvider = StateProvider<int>((ref) => 0);
 
 /// Bottom-navigation shell that wraps the main screens (Chat, Call, Mira,
-/// Memory, Profile). Mirrors the mockup's bottom nav bar with glass cards.
+/// Bottom-navigation shell with 3 tabs: Chat, Mira (center), Companions.
+/// Pass currentIndex = -1 for non-tab screens (persona, memory, settings)
+/// so no tab is highlighted.
 class MainShell extends ConsumerStatefulWidget {
   final Widget child;
-  final int currentIndex;
+  final int currentIndex; // -1 = no tab highlighted
 
   const MainShell({
     super.key,

@@ -31,7 +31,7 @@ class SettingsScreen extends ConsumerWidget {
     return MainShell(
       // Settings isn't in the bottom nav — default to -1 so nothing is active.
       // But MainShell requires 0-4, so we use 4 (Profile) as the closest match.
-      currentIndex: 2,
+      currentIndex: -1,
       child: AtmosphericBackground(
         child: SafeArea(
           child: SingleChildScrollView(
