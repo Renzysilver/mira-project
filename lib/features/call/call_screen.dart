@@ -53,6 +53,14 @@ class _CallScreenState extends ConsumerState<CallScreen>
     final callState   = ref.watch(callProvider);
     final personaState = ref.watch(personaProvider);
 
+    // Drive Rive avatar speaking animation from call phase.
+    ref.listen<CallState>(callProvider, (prev, next) {
+      final speaking = next.phase == CallPhase.speaking;
+      if (prev?.phase != next.phase) {
+        ref.read(isMiraSpeakingProvider.notifier).state = speaking;
+      }
+    });
+
     return Scaffold(
       body: Stack(
         children: [

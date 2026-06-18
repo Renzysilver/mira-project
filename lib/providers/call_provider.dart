@@ -30,8 +30,19 @@ class CallNotifier extends StateNotifier<CallState> {
           phase: CallPhase.dialing,
           startedAt: DateTime.now(),
         )) {
-    _voiceCallService.onPhaseChanged =
-        (phase) => state = state.copyWith(phase: phase);
+    _voiceCallService.onPhaseChanged = (phase) {
+      // First non-dialing phase means the call is now connected.
+      final newStatus = (phase != CallPhase.dialing &&
+              state.status == CallStatus.ringing)
+          ? CallStatus.connected
+          : state.status;
+      final wasRinging = state.status == CallStatus.ringing;
+      state = state.copyWith(phase: phase, status: newStatus);
+      // Start the timer the moment we connect.
+      if (newStatus == CallStatus.connected && wasRinging) {
+        _startTimer();
+      }
+    };
     _voiceCallService.onUserSpoke =
         (text) => state = state.copyWith(lastUserSpeech: text);
     _voiceCallService.onAiSpoke =
@@ -67,7 +78,8 @@ class CallNotifier extends StateNotifier<CallState> {
     );
 
     await _voiceCallService.startCall();
-    _startTimer();
+    // Timer now starts automatically when the first non-dialing
+    // phase change sets status to connected.
   }
 
   void toggleMute() => state = state.copyWith(isMuted: !state.isMuted);

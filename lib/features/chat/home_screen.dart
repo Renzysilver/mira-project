@@ -49,7 +49,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _speech.stop();
       setState(() => _isListening = false);
       if (_voiceText.isNotEmpty) {
-        context.go('/chat');
+        // Pass transcribed text as extra so chat screen pre-fills the input.
+        context.go('/chat', extra: _voiceText);
       }
     } else {
       setState(() {
@@ -63,7 +64,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           });
           if (result.finalResult && _voiceText.isNotEmpty) {
             setState(() => _isListening = false);
-            context.go('/chat');
+            // Pass transcribed text as extra so chat screen pre-fills the input.
+            context.go('/chat', extra: _voiceText);
           }
         },
         listenFor: const Duration(seconds: 10),

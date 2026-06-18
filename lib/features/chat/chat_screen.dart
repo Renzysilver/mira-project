@@ -40,6 +40,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Pre-fill input from voice transcription if passed from home screen.
+    final extra = GoRouterState.of(context).extra;
+    if (extra is String && extra.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _messageController.text = extra;
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
