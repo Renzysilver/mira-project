@@ -26,7 +26,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _routes = [
     '/chat',
     '/companions',
-    '/mira',      // "Mira" — the standalone AI assistant
+    '/home',      // "Mira" — the main home with all actions + history
     '/memory',
     '/persona',   // Profile
   ];

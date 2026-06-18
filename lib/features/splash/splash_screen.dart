@@ -47,7 +47,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       if (!mounted) return;
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        context.go('/mira');
+        context.go('/home');
       } else {
         context.go('/auth/login');
       }
