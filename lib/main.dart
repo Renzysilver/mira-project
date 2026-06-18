@@ -74,7 +74,7 @@ void main() async {
       final onboardingDone = map['onboardingComplete'] as bool? ?? false;
       // We can't access providers here (no container yet), but we
       // can set a static flag that the router reads.
-      _cachedOnboardingComplete = onboardingDone;
+      cachedOnboardingComplete = onboardingDone;
     }
   } catch (_) {}
 
@@ -83,4 +83,4 @@ void main() async {
 
 /// Set during main() from Hive cache — read by the router before
 /// the auth listener has a chance to fire.
-bool _cachedOnboardingComplete = false;
+bool cachedOnboardingComplete = false;

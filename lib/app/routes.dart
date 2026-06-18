@@ -17,7 +17,7 @@ import '../features/companion_creator/companion_creator_screen.dart';
 import '../features/mira/mira_assistant_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../providers/auth_provider.dart' show onboardingCompleteProvider;
-import '../main.dart' show _cachedOnboardingComplete;
+import '../main.dart' show cachedOnboardingComplete;
 
 // onboardingCompleteProvider moved to auth_provider.dart to avoid
 // circular imports (auth_provider needs to sync it with Firestore).
@@ -30,7 +30,7 @@ final routerProvider = Provider.family<GoRouter, bool>((ref, isAuthenticated) {
       // The cache is set in main.dart before runApp() so the router
       // has the right value on the very first redirect.
       final onboardingComplete = ref.read(onboardingCompleteProvider) ||
-          _cachedOnboardingComplete;
+          cachedOnboardingComplete;
       final loc = state.matchedLocation;
       final isOnboardingRoute = loc.startsWith('/onboarding');
       final isAuthRoute = loc.startsWith('/auth');
