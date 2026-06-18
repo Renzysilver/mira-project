@@ -40,15 +40,22 @@ class _MiraSidebarState extends ConsumerState<MiraSidebar>
 
   void _navigate(String route) {
     widget.onClose();
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) context.go(route);
+    // Use the root navigator's context so go works even after
+    // the sidebar is dismissed.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      GoRouter.of(context).go(route);
     });
   }
 
   void _launchUrl(String url) async {
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      // Fallback: try platform default
+      try {
+        await launchUrl(uri);
+      } catch (_) {}
     }
   }
 
@@ -174,15 +181,12 @@ class _MiraSidebarState extends ConsumerState<MiraSidebar>
                               // Assistant actions — use url_launcher
                               _Item(icon: Icons.phone_in_talk_outlined, label: 'Make a Phone Call', onTap: () => _launchUrl('tel:')),
                               _Item(icon: Icons.sms_outlined, label: 'Send a Message', onTap: () => _launchUrl('sms:')),
-                              _Item(icon: Icons.alarm_outlined, label: 'Set Alarm', onTap: () => _launchUrl('android.intent://SET_ALARM#Intent;scheme=android.intent;action=android.intent.action.SET_ALARM;end')),
+                              _Item(icon: Icons.alarm_outlined, label: 'Set Alarm', onTap: () => _launchUrl('intent://alarm#Intent;action=android.intent.action.SET_ALARM;type=android.intent.category.ALARM;end')),
                               _Item(icon: Icons.calendar_today_outlined, label: 'Open Calendar', onTap: () => _launchUrl('content://com.android.calendar/time')),
-                              _Item(icon: Icons.camera_alt_outlined, label: 'Open Camera', onTap: () => _launchUrl('android.intent://media.action.IMAGE_CAPTURE#Intent;scheme=android.intent;action=android.media.action.IMAGE_CAPTURE;end')),
+                              _Item(icon: Icons.camera_alt_outlined, label: 'Open Camera', onTap: () => _launchUrl('intent://camera#Intent;action=android.media.action.IMAGE_CAPTURE;end')),
                               const _Divider(),
                               _Item(icon: Icons.settings_outlined, label: 'Settings', onTap: () => _navigate('/settings')),
-                              _Item(icon: Icons.palette_outlined, label: 'Appearance', onTap: () => _navigate('/settings')),
                               _Item(icon: Icons.mood_outlined, label: 'Mood & Personality', onTap: () => _navigate('/persona')),
-                              const _Divider(),
-                              _Item(icon: Icons.help_outline, label: 'Help & Support', onTap: () {}),
                             ],
                           ),
                         ),

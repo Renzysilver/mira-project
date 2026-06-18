@@ -89,8 +89,8 @@ class VoiceCallService {
     if (!_isCallActive) return;
 
     final greeting = _userName != null && _userName!.isNotEmpty
-        ? 'Hey $_userName! I\'m so happy you called. How are you doing?'
-        : 'Hey! I\'m so happy you called. How are you doing?';
+        ? 'Hi $_userName, this is Mira. How can I help you?'
+        : 'Hi, this is Mira. How can I help you?';
 
     _conversationHistory.add({'role': 'assistant', 'content': greeting});
     onAiSpoke?.call(greeting);
