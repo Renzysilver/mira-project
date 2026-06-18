@@ -96,6 +96,8 @@ class VoiceCallService {
     onAiSpoke?.call(greeting);
 
     await _audioService.playPreSpeakChime();
+    // Give the audio session time to settle after the chime before TTS.
+    await Future.delayed(const Duration(milliseconds: 500));
     await _speakText(greeting);
 
     if (!_isCallActive) return;
@@ -108,9 +110,10 @@ class VoiceCallService {
   /// CRITICAL: Deactivates the speech-to-text audio session before TTS
   /// playback, then reactivates it after. Without this, the
   /// voiceCommunication audio session blocks just_audio playback on
-  /// Android, causing TTS to silently fail — which is the root cause
-  /// of the "stuck in SPEAKING" and "no greeting" bugs.
+  /// Android, causing TTS to silently fail.
   Future<void> _speakText(String text) async {
+    // Set _isSpeaking BEFORE stop() so that _onSpeechStatus/_onSpeechError
+    // callbacks are guarded from interfering during the transition.
     _isSpeaking = true;
     await _speech.stop(); // mic OFF before speaking
 
@@ -131,6 +134,9 @@ class VoiceCallService {
 
     // Pass the companion's voiceId so each companion sounds different.
     final ok = await _ttsService.speak(text, voiceId: _voiceId);
+
+    // Wait a beat after TTS finishes before clearing the speaking flag.
+    await Future.delayed(const Duration(milliseconds: 800));
     _isSpeaking = false;
 
     // Reactivate the STT audio session for the next listening cycle.
@@ -152,7 +158,6 @@ class VoiceCallService {
       }
       return;
     }
-    await Future.delayed(const Duration(milliseconds: 400));
   }
 
   void _startListening() async {
@@ -252,6 +257,7 @@ class VoiceCallService {
   }
 
   void _onSpeechError(dynamic error) {
+    if (_isSpeaking) return; // Guard: ignore STT errors during TTS playback
     AppLogger.warning('STT Error: $error');
     _consecutiveSttErrors++;
     if (_consecutiveSttErrors >= _maxSttErrors) {
@@ -268,6 +274,7 @@ class VoiceCallService {
   }
 
   void _onSpeechStatus(String status) {
+    if (_isSpeaking) return; // Guard: ignore STT status changes during TTS
     AppLogger.info('STT status: $status');
     if (status == 'notListening' &&
         _isCallActive &&

@@ -577,43 +577,10 @@ class _CallWaveform extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isActive = phase == CallPhase.speaking || phase == CallPhase.listening;
-    return SizedBox(
-      width: 180,
-      height: 32,
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (_, __) {
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: List.generate(11, (i) {
-              final t = controller.value;
-              // Each bar has a phase offset based on its index.
-              final phaseShift = i * 0.5;
-              final baseHeight = 6.0;
-              final amplitude = isActive ? 18.0 : 0.0;
-              final wave =
-                  (sin((t * 2 * pi) + phaseShift) * 0.5 + 0.5) * amplitude;
-              final h = baseHeight + wave;
-              final color = phase == CallPhase.speaking
-                  ? AppTheme.moonRose
-                  : phase == CallPhase.listening
-                      ? AppTheme.successGreen
-                      : AppTheme.textSecondary.withOpacity(0.4);
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                width: 3,
-                height: h,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              );
-            }),
-          );
-        },
-      ),
+    // Use the new AnimatedWaveform widget with 28 bars
+    return AnimatedWaveform(
+      phase: phase.name,
+      maxHeight: 48,
     );
   }
 }

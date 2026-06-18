@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../app/theme.dart';
 import '../../core/storage/firebase_storage.dart';
 import '../../models/persona_model.dart';
@@ -29,6 +30,47 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _sidebarOpen = false;
+  bool _isListening = false;
+  String _voiceText = '';
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _speechAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _speech.initialize().then((ok) {
+      if (mounted) setState(() => _speechAvailable = ok);
+    });
+  }
+
+  void _toggleVoiceInput() {
+    if (!_speechAvailable) return;
+    if (_isListening) {
+      _speech.stop();
+      setState(() => _isListening = false);
+      if (_voiceText.isNotEmpty) {
+        context.go('/chat');
+      }
+    } else {
+      setState(() {
+        _isListening = true;
+        _voiceText = '';
+      });
+      _speech.listen(
+        onResult: (result) {
+          setState(() {
+            _voiceText = result.recognizedWords;
+          });
+          if (result.finalResult && _voiceText.isNotEmpty) {
+            setState(() => _isListening = false);
+            context.go('/chat');
+          }
+        },
+        listenFor: const Duration(seconds: 10),
+        pauseFor: const Duration(seconds: 3),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,23 +129,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Column(
                           children: [
-                            // Large avatar with glow
+                            // Large Rive avatar with glow
                             Container(
-                              width: 100,
-                              height: 100,
+                              width: 180,
+                              height: 180,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                gradient: AppTheme.auroraGradient,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.purple.withOpacity(0.3),
-                                    blurRadius: 30,
-                                    spreadRadius: 4,
+                                    color: AppTheme.purple.withOpacity(0.4),
+                                    blurRadius: 40,
+                                    spreadRadius: 8,
                                   ),
                                 ],
                               ),
-                              child: const Icon(Icons.auto_awesome,
-                                  color: Colors.white, size: 44),
+                              child: ClipOval(
+                                child: const MiraAvatarWidget(),
+                              ),
                             ),
                             const SizedBox(height: 16),
                             Text('$greeting, $name',
@@ -151,14 +193,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           fontSize: 13)),
                                 ),
                                 GestureDetector(
-                                  onTap: () => context.go('/call'),
+                                  onTap: _toggleVoiceInput,
                                   child: Container(
                                     width: 32, height: 32,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      gradient: AppTheme.auroraGradient,
+                                      gradient: _isListening
+                                          ? AppTheme.pinkGradient
+                                          : AppTheme.auroraGradient,
+                                      boxShadow: _isListening
+                                          ? [BoxShadow(color: AppTheme.pink.withOpacity(0.4), blurRadius: 12, spreadRadius: 1)]
+                                          : null,
                                     ),
-                                    child: const Icon(Icons.mic_rounded,
+                                    child: Icon(
+                                        _isListening ? Icons.stop_rounded : Icons.mic_rounded,
                                         color: Colors.white, size: 16),
                                   ),
                                 ),
