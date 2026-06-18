@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../app/theme.dart';
+import '../../core/storage/firebase_storage.dart';
 import '../../models/persona_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/companions_provider.dart';
@@ -11,6 +12,7 @@ import '../../providers/persona_provider.dart';
 import '../../widgets/atmosphere/atmospheric_background.dart';
 import '../../widgets/mira_avatar.dart';
 import '../../widgets/shell/main_shell.dart';
+import '../../widgets/shell/mira_sidebar.dart';
 
 /// Live call history stream for the active companion.
 final _callHistoryProvider = StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
@@ -21,8 +23,6 @@ final _callHistoryProvider = StreamProvider.autoDispose<List<Map<String, dynamic
 });
 
 String _personalityLabel(PersonaModel persona) {
-  // Use the companion's specific traits if available (e.g. "Adventurous · Confident · Playful").
-  // Fall back to the base type label if no specific traits stored.
   if (persona.personalityTraits.isNotEmpty) {
     return persona.personalityTraits.join(' · ');
   }
@@ -33,11 +33,21 @@ String _personalityLabel(PersonaModel persona) {
   };
 }
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _sidebarOpen = false;
+
+  void _openSidebar() => setState(() => _sidebarOpen = true);
+  void _closeSidebar() => setState(() => _sidebarOpen = false);
+
+  @override
+  Widget build(BuildContext context) {
     final persona = ref.watch(personaProvider).persona;
     final relationship = ref.watch(personaProvider).relationship;
     final user = ref.watch(authProvider).user;
@@ -46,267 +56,265 @@ class HomeScreen extends ConsumerWidget {
 
     return MainShell(
       currentIndex: 2,
-      child: AtmosphericBackground(
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 120),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ── Top bar ───────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        children: [
+          AtmosphericBackground(
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 120),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Top bar with hamburger menu
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 24, 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Hello, $name',
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.textSecondary,
-                                  letterSpacing: 1.5)),
-                          ShaderMask(
-                            shaderCallback: (b) =>
-                                AppTheme.auroraGradient.createShader(b),
-                            child: const Text('Mira',
-                                style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w200,
-                                    color: Colors.white,
-                                    letterSpacing: 4)),
+                          GestureDetector(
+                            onTap: _openSidebar,
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withOpacity(0.12)),
+                              ),
+                              child: const Icon(Icons.menu_rounded,
+                                  color: AppTheme.moonWhite, size: 20),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Hello, $name',
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        color: AppTheme.textSecondary,
+                                        letterSpacing: 1.5)),
+                                ShaderMask(
+                                  shaderCallback: (b) =>
+                                      AppTheme.auroraGradient.createShader(b),
+                                  child: const Text('Mira',
+                                      style: TextStyle(
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.w200,
+                                          color: Colors.white,
+                                          letterSpacing: 4)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              _TopIconBtn(
+                                  icon: Icons.add_rounded,
+                                  onTap: () => context.go('/companion/new')),
+                              const SizedBox(width: 8),
+                              _TopIconBtn(
+                                  icon: Icons.settings_outlined,
+                                  onTap: () => context.go('/settings')),
+                            ],
                           ),
                         ],
                       ),
-                      Row(
+                    ),
+                    const SizedBox(height: 24),
+                    // Assistant status banner
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: _AssistantStatusBanner(),
+                    ),
+                    const SizedBox(height: 24),
+                    // Hero companion card
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: _HeroCompanionCard(
+                        persona: persona,
+                        affectionLevel: relationship.affectionLevel,
+                        affectionLabel: relationship.affectionLabel,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Quick actions
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
                         children: [
-                          _TopIconBtn(
-                              icon: Icons.add_rounded,
-                              onTap: () => context.go('/companion/new')),
-                          const SizedBox(width: 8),
-                          _TopIconBtn(
-                              icon: Icons.people_alt_outlined,
-                              onTap: () => context.go('/companions')),
-                          const SizedBox(width: 8),
-                          _TopIconBtn(
-                              icon: Icons.settings_outlined,
-                              onTap: () => context.go('/settings')),
+                          Expanded(child: _ActionCard(
+                            icon: Icons.chat_bubble_outline_rounded,
+                            label: 'Chat',
+                            sublabel: 'Send a message',
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF4A2080), Color(0xFF9B6DFF)],
+                              begin: Alignment.topLeft, end: Alignment.bottomRight),
+                            onTap: () => context.go('/chat'),
+                          )),
+                          const SizedBox(width: 14),
+                          Expanded(child: _ActionCard(
+                            icon: Icons.phone_outlined,
+                            label: 'Call',
+                            sublabel: 'Hear her voice',
+                            gradient: AppTheme.pinkGradient,
+                            onTap: () => context.go('/call'),
+                          )),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 28),
-
-                // ── Hero companion card ───────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: _HeroCompanionCard(
-                    persona: persona,
-                    affectionLevel: relationship.affectionLevel,
-                    affectionLabel: relationship.affectionLabel,
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // ── Quick actions (4 cards) ──────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    children: [
-                      Expanded(
-                          child: _ActionCard(
-                        icon: Icons.chat_bubble_outline_rounded,
-                        label: 'Chat',
-                        sublabel: 'Send a message',
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF4A2080), Color(0xFF9B6DFF)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        onTap: () => context.go('/chat'),
-                      )),
-                      const SizedBox(width: 14),
-                      Expanded(
-                          child: _ActionCard(
-                        icon: Icons.phone_outlined,
-                        label: 'Call',
-                        sublabel: 'Hear her voice',
-                        gradient: AppTheme.pinkGradient,
-                        onTap: () => context.go('/call'),
-                      )),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    children: [
-                      Expanded(
-                          child: _ActionCard(
-                        icon: Icons.auto_awesome_outlined,
-                        label: 'Persona',
-                        sublabel: 'Her character',
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF204080), Color(0xFFA7C4FF)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        onTap: () => context.go('/persona'),
-                      )),
-                      const SizedBox(width: 14),
-                      Expanded(
-                          child: _ActionCard(
-                        icon: Icons.psychology_outlined,
-                        label: 'Memory',
-                        sublabel: 'What she knows',
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF1A4020), Color(0xFF98F5C4)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        onTap: () => context.go('/memory'),
-                      )),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 28),
-
-                // ── Relationship stats ───────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: _SectionLabel(label: 'Relationship'),
-                ),
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: AppTheme.glassWhite,
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: AppTheme.glassBorder),
                     ),
-                    child: Row(
-                      children: [
-                        _StatPill(
-                          label: 'Days',
-                          value: '${relationship.daysTogether}',
-                          icon: Icons.calendar_today_outlined,
-                          color: AppTheme.auroraBlue,
-                        ),
-                        _StatPill(
-                          label: 'Messages',
-                          value: '${relationship.messagesSent}',
-                          icon: Icons.chat_outlined,
-                          color: AppTheme.moonRose,
-                        ),
-                        _StatPill(
-                          label: 'Calls',
-                          value: '${relationship.callsMade}',
-                          icon: Icons.call_outlined,
-                          color: AppTheme.successGreen,
-                        ),
-                        _StatPill(
-                          label: 'Streak',
-                          value: '${relationship.streakDays}d',
-                          icon: Icons.local_fire_department_outlined,
-                          color: AppTheme.accentGold,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 28),
-
-                // ── Call history ─────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const _SectionLabel(label: 'Call History'),
-                      TextButton(
-                        onPressed: () {},
-                        child: const Text('See all',
-                            style: TextStyle(
-                                color: AppTheme.magentaAccent,
-                                fontSize: 11,
-                                letterSpacing: 0.5)),
+                    const SizedBox(height: 14),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        children: [
+                          Expanded(child: _ActionCard(
+                            icon: Icons.auto_awesome_outlined,
+                            label: 'Persona',
+                            sublabel: 'Her character',
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF204080), Color(0xFFA7C4FF)],
+                              begin: Alignment.topLeft, end: Alignment.bottomRight),
+                            onTap: () => context.go('/persona'),
+                          )),
+                          const SizedBox(width: 14),
+                          Expanded(child: _ActionCard(
+                            icon: Icons.psychology_outlined,
+                            label: 'Memory',
+                            sublabel: 'What she knows',
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF1A4020), Color(0xFF98F5C4)],
+                              begin: Alignment.topLeft, end: Alignment.bottomRight),
+                            onTap: () => context.go('/memory'),
+                          )),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: callHistoryAsync.when(
-                    data: (calls) {
-                      if (calls.isEmpty) {
-                        return _EmptyCard(
-                          icon: Icons.call_outlined,
-                          text: 'No calls yet. Tap "Call" to hear ${persona.name}\'s voice.',
-                        );
-                      }
-                      return Column(
-                        children: calls.take(4).map((call) {
-                          final duration = call['duration'] as int? ?? 0;
-                          final summary =
-                              (call['summary'] as String?) ?? '(no summary)';
-                          final endedAt = call['endedAt'];
-                          DateTime? dt;
-                          if (endedAt is DateTime) {
-                            dt = endedAt;
+                    ),
+                    const SizedBox(height: 28),
+                    // Relationship stats
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 24),
+                      child: _SectionLabel(label: 'Relationship'),
+                    ),
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: AppTheme.glassWhite,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: AppTheme.glassBorder),
+                        ),
+                        child: Row(
+                          children: [
+                            _StatPill(label: 'Days', value: '${relationship.daysTogether}', icon: Icons.calendar_today_outlined, color: AppTheme.auroraBlue),
+                            _StatPill(label: 'Messages', value: '${relationship.messagesSent}', icon: Icons.chat_outlined, color: AppTheme.moonRose),
+                            _StatPill(label: 'Calls', value: '${relationship.callsMade}', icon: Icons.call_outlined, color: AppTheme.successGreen),
+                            _StatPill(label: 'Streak', value: '${relationship.streakDays}d', icon: Icons.local_fire_department_outlined, color: AppTheme.accentGold),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    // Call history
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const _SectionLabel(label: 'Call History'),
+                          TextButton(onPressed: () {}, child: const Text('See all', style: TextStyle(color: AppTheme.magentaAccent, fontSize: 11, letterSpacing: 0.5))),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: callHistoryAsync.when(
+                        data: (calls) {
+                          if (calls.isEmpty) {
+                            return _EmptyCard(icon: Icons.call_outlined, text: 'No calls yet. Tap "Call" to hear ${persona.name}\'s voice.');
                           }
-                          // Firestore Timestamp would also work but
-                          // we get Map from the stream so just check.
-                          final timeStr = dt != null
-                              ? DateFormat('MMM d, h:mm a').format(dt)
-                              : 'Recently';
-                          return _CallHistoryItem(
-                            duration: duration,
-                            summary: summary,
-                            timeStr: timeStr,
+                          return Column(
+                            children: calls.take(4).map((call) {
+                              final duration = call['duration'] as int? ?? 0;
+                              final summary = (call['summary'] as String?) ?? '(no summary)';
+                              final timeStr = 'Recently';
+                              return _CallHistoryItem(duration: duration, summary: summary, timeStr: timeStr);
+                            }).toList(),
                           );
-                        }).toList(),
-                      );
-                    },
-                    loading: () => const Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                            color: AppTheme.magentaAccent, strokeWidth: 2),
+                        },
+                        loading: () => const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator(color: AppTheme.magentaAccent, strokeWidth: 2))),
+                        error: (e, _) => _EmptyCard(icon: Icons.error_outline, text: 'Failed to load call history.'),
                       ),
                     ),
-                    error: (e, _) => _EmptyCard(
-                      icon: Icons.error_outline,
-                      text: 'Failed to load call history.',
+                    const SizedBox(height: 28),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text('she\'s waiting for you  ✦',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary.withOpacity(0.6), letterSpacing: 2)),
                     ),
-                  ),
+                  ],
                 ),
+              ),
+            ),
+          ),
+          // Sidebar overlay
+          if (_sidebarOpen)
+            MiraSidebar(onClose: _closeSidebar),
+        ],
+      ),
+    );
+  }
+}
 
-                const SizedBox(height: 28),
-
-                // ── Footer hint ──────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text('she\'s waiting for you  ✦',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary.withOpacity(0.6),
-                          letterSpacing: 2)),
-                ),
+class _AssistantStatusBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.magentaAccent.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.magentaAccent.withOpacity(0.25), width: 1),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 10, height: 10,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppTheme.successGreen,
+              boxShadow: [BoxShadow(color: AppTheme.successGreen.withOpacity(0.5), blurRadius: 8, spreadRadius: 1)],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Mira Assistant', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.moonWhite, letterSpacing: 0.5)),
+                const SizedBox(height: 2),
+                Text('Ready to help', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary.withOpacity(0.8), letterSpacing: 0.5)),
               ],
             ),
           ),
-        ),
+          GestureDetector(
+            onTap: () => context.go('/mira'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(gradient: AppTheme.auroraGradient, borderRadius: BorderRadius.circular(14)),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.auto_awesome, color: Colors.white, size: 14),
+                SizedBox(width: 4),
+                Text('Ask Mira', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.5)),
+              ]),
+            ),
+          ),
+        ],
       ),
     );
   }
