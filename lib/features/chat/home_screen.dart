@@ -54,7 +54,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final name = user?.displayName?.split(' ').first ?? 'you';
     final callHistoryAsync = ref.watch(_callHistoryProvider);
 
-    return MainShell(
+    // PopScope: if sidebar is open, close it on back press instead of
+    // exiting the app. Otherwise let the system handle back (exit).
+    return PopScope(
+      canPop: !_sidebarOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _sidebarOpen) {
+          _closeSidebar();
+        }
+      },
+      child: MainShell(
       currentIndex: 2,
       child: Stack(
         children: [
@@ -266,6 +275,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           if (_sidebarOpen)
             MiraSidebar(onClose: _closeSidebar),
         ],
+      ),
       ),
     );
   }

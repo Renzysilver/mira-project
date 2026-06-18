@@ -105,17 +105,43 @@ class VoiceCallService {
   /// Centralized speak method — always sets _isSpeaking flag correctly
   /// so the mic never reactivates mid-sentence.
   ///
-  /// If TTS fails or times out, the speaking state is force-reset so
-  /// the call can continue (return to listening) instead of getting
-  /// stuck in SPEAKING forever.
+  /// CRITICAL: Deactivates the speech-to-text audio session before TTS
+  /// playback, then reactivates it after. Without this, the
+  /// voiceCommunication audio session blocks just_audio playback on
+  /// Android, causing TTS to silently fail — which is the root cause
+  /// of the "stuck in SPEAKING" and "no greeting" bugs.
   Future<void> _speakText(String text) async {
     _isSpeaking = true;
     await _speech.stop(); // mic OFF before speaking
+
+    // Deactivate the STT audio session so TTS can use the speaker.
+    try {
+      final session = await AudioSession.instance;
+      await session.setActive(false);
+      AppLogger.info('Audio session deactivated for TTS');
+    } catch (e) {
+      AppLogger.warning('Failed to deactivate audio session: $e');
+    }
+
+    // Small delay to let the audio session release.
+    await Future.delayed(const Duration(milliseconds: 200));
+
     onPhaseChanged?.call(CallPhase.speaking);
     AppLogger.info('TTS speaking with voiceId: $_voiceId, text: ${text.substring(0, text.length.clamp(0, 50))}');
+
     // Pass the companion's voiceId so each companion sounds different.
     final ok = await _ttsService.speak(text, voiceId: _voiceId);
     _isSpeaking = false;
+
+    // Reactivate the STT audio session for the next listening cycle.
+    try {
+      final session = await AudioSession.instance;
+      await session.setActive(true);
+      AppLogger.info('Audio session reactivated for STT');
+    } catch (e) {
+      AppLogger.warning('Failed to reactivate audio session: $e');
+    }
+
     if (!ok) {
       AppLogger.error('TTS failed for text: ${text.substring(0, text.length.clamp(0, 80))}');
       // Don't end the call on TTS failure — just skip this response
@@ -126,7 +152,7 @@ class VoiceCallService {
       }
       return;
     }
-    await Future.delayed(const Duration(milliseconds: 600));
+    await Future.delayed(const Duration(milliseconds: 400));
   }
 
   void _startListening() async {
