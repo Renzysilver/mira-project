@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../app/theme.dart';
 import '../../providers/auth_provider.dart';
 
@@ -44,6 +45,13 @@ class _MiraSidebarState extends ConsumerState<MiraSidebar>
     });
   }
 
+  void _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
@@ -78,8 +86,7 @@ class _MiraSidebarState extends ConsumerState<MiraSidebar>
                           child: Row(
                             children: [
                               Container(
-                                width: 52,
-                                height: 52,
+                                width: 52, height: 52,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   gradient: AppTheme.auroraGradient,
@@ -159,10 +166,17 @@ class _MiraSidebarState extends ConsumerState<MiraSidebar>
                             children: [
                               _Item(icon: Icons.chat_bubble_outline, label: 'New Chat', onTap: () => _navigate('/chat')),
                               _Item(icon: Icons.phone_outlined, label: 'Voice Call', onTap: () => _navigate('/call')),
-                              _Item(icon: Icons.history, label: 'History', onTap: () => _navigate('/home')),
-                              _Item(icon: Icons.auto_awesome_outlined, label: 'AI Tools', onTap: () => _navigate('/mira')),
-                              _Item(icon: Icons.psychology_outlined, label: 'Memory', onTap: () => _navigate('/memory')),
+                              _Item(icon: Icons.auto_awesome_outlined, label: 'Ask Mira', onTap: () => _navigate('/mira')),
                               _Item(icon: Icons.people_outline, label: 'Companions', onTap: () => _navigate('/companions')),
+                              _Item(icon: Icons.person_outline, label: 'Companion Profile', onTap: () => _navigate('/persona')),
+                              _Item(icon: Icons.psychology_outlined, label: 'Memory', onTap: () => _navigate('/memory')),
+                              const _Divider(),
+                              // Assistant actions — use url_launcher
+                              _Item(icon: Icons.phone_in_talk_outlined, label: 'Make a Phone Call', onTap: () => _launchUrl('tel:')),
+                              _Item(icon: Icons.sms_outlined, label: 'Send a Message', onTap: () => _launchUrl('sms:')),
+                              _Item(icon: Icons.alarm_outlined, label: 'Set Alarm', onTap: () => _launchUrl('android.intent://SET_ALARM#Intent;scheme=android.intent;action=android.intent.action.SET_ALARM;end')),
+                              _Item(icon: Icons.calendar_today_outlined, label: 'Open Calendar', onTap: () => _launchUrl('content://com.android.calendar/time')),
+                              _Item(icon: Icons.camera_alt_outlined, label: 'Open Camera', onTap: () => _launchUrl('android.intent://media.action.IMAGE_CAPTURE#Intent;scheme=android.intent;action=android.media.action.IMAGE_CAPTURE;end')),
                               const _Divider(),
                               _Item(icon: Icons.settings_outlined, label: 'Settings', onTap: () => _navigate('/settings')),
                               _Item(icon: Icons.palette_outlined, label: 'Appearance', onTap: () => _navigate('/settings')),

@@ -26,9 +26,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _routes = [
     '/chat',
     '/companions',
-    '/home',      // "Mira" — the main home with all actions + history
-    '/memory',
-    '/persona',   // Profile
+    '/home',      // "Mira" — center, elevated
   ];
 
   void _onTap(int i) {
@@ -42,7 +40,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       body: widget.child,
       extendBody: true,
       bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        margin: const EdgeInsets.fromLTRB(60, 0, 60, 24),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
           color: AppTheme.glassWhite,
@@ -50,7 +48,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           border: Border.all(color: AppTheme.glassBorder, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withOpacity(0.4),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -66,29 +64,17 @@ class _MainShellState extends ConsumerState<MainShell> {
               onTap: () => _onTap(0),
             ),
             _NavIcon(
-              icon: Icons.people_outline_rounded,
-              label: 'Companions',
-              isSelected: widget.currentIndex == 1,
-              onTap: () => _onTap(1),
-            ),
-            _NavIcon(
-              icon: Icons.home_filled,
+              icon: Icons.auto_awesome_rounded,
               label: 'Mira',
               isSelected: widget.currentIndex == 2,
               isCenter: true,
               onTap: () => _onTap(2),
             ),
             _NavIcon(
-              icon: Icons.psychology_outlined,
-              label: 'Memory',
-              isSelected: widget.currentIndex == 3,
-              onTap: () => _onTap(3),
-            ),
-            _NavIcon(
-              icon: Icons.person_outline_rounded,
-              label: 'Profile',
-              isSelected: widget.currentIndex == 4,
-              onTap: () => _onTap(4),
+              icon: Icons.people_outline_rounded,
+              label: 'Companions',
+              isSelected: widget.currentIndex == 1,
+              onTap: () => _onTap(1),
             ),
           ],
         ),

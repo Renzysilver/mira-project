@@ -1,23 +1,28 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import '../core/ai/ai_provider_registry.dart';
 import '../core/storage/firebase_storage.dart';
 import '../core/utils/logger.dart';
 import '../models/message_model.dart';
-import '../models/persona_model.dart';
 import '../services/ai_service.dart';
 import 'auth_provider.dart';
 
-/// Mira's fixed persona — she's the system AI assistant, NOT a companion.
-/// Always sweet, always caring, always "Mira". Companion switching does
-/// NOT affect her identity.
-final _miraPersona = PersonaModel(
-  name: 'Mira',
-  personalityType: PersonalityType.sweet,
-  currentMood: AvatarMood.happy,
-  temperature: 0.7,
-  personalityTraits: ['Helpful', 'Caring', 'Intelligent'],
-);
+/// Mira's system prompt — she's a balanced AI assistant, NOT a companion.
+/// No romantic persona, no endearing terms, no flirt mode. Professional
+/// but friendly, like ChatGPT or Claude.
+const _miraSystemPrompt = '''
+You are Mira, a helpful AI assistant. You are NOT a companion or girlfriend — you are a productivity assistant like Siri, Google Assistant, or ChatGPT.
+
+Rules:
+- Be helpful, concise, and direct
+- Use a balanced, professional but friendly tone
+- Do NOT use endearing terms or romantic language
+- Do NOT roleplay as a companion
+- Keep responses focused and actionable
+- If the user asks you to do something you can't, explain why clearly
+- You can help with: writing, research, planning, reminders, general questions, productivity
+''';
 
 /// Chat state for the Mira assistant.
 class MiraChatState {
@@ -57,17 +62,15 @@ class MiraChatState {
 final miraChatProvider =
     StateNotifierProvider<MiraChatNotifier, MiraChatState>((ref) {
   final storage = ref.watch(firestoreStorageProvider);
-  final aiService = AiService();
-  return MiraChatNotifier(storage, aiService);
+  return MiraChatNotifier(storage);
 });
 
 class MiraChatNotifier extends StateNotifier<MiraChatState> {
   final FirestoreStorage? _storage;
-  final AiService _aiService;
   final _uuid = const Uuid();
   StreamSubscription? _sub;
 
-  MiraChatNotifier(this._storage, this._aiService) : super(const MiraChatState()) {
+  MiraChatNotifier(this._storage) : super(const MiraChatState()) {
     if (_storage != null) _subscribe();
   }
 
@@ -111,11 +114,15 @@ class MiraChatNotifier extends StateNotifier<MiraChatState> {
     );
 
     try {
-      final response = await _aiService.sendMessage(
-        messages: [...state.messages, userMessage],
-        persona: _miraPersona,
-        memoryFacts: const [],
-        userName: userName,
+      // Use rawCompletion with Mira's custom system prompt so she
+      // sounds like a balanced AI assistant (like ChatGPT/Claude),
+      // NOT a companion with a romantic persona.
+      final response = await AiProviderRegistry.active.rawCompletion(
+        systemPrompt: _miraSystemPrompt,
+        messages: [...state.messages, userMessage]
+            .map((m) => {'role': m.role, 'content': m.content})
+            .toList(),
+        temperature: 0.5,
       );
 
       final aiMessage = MessageModel(

@@ -232,13 +232,19 @@ class VoiceCallService {
       await _audioService.playPreSpeakChime();
       await _speakText(aiResponse);
 
+      // CRITICAL: Clear _isProcessing BEFORE calling _startListening,
+      // not in the finally block. Otherwise _startListening sees
+      // _isProcessing=true and returns immediately without starting
+      // the mic — leaving the call stuck in speaking state.
+      _isProcessing = false;
       if (_isCallActive) _startListening();
     } catch (e) {
       AppLogger.error('Voice call AI error', e);
       onError?.call('Something went wrong.');
       _isCallActive = false;
     } finally {
-      // Always reset, even if _speakText bailed early via onError.
+      // Safety net — in case an exception was thrown before the
+      // explicit clear above.
       _isProcessing = false;
       _isSpeaking = false;
     }
