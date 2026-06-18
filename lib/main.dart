@@ -62,5 +62,25 @@ void main() async {
   // in app.dart — it needs the service instance.
 
   AppLogger.info('Mirabel initialized');
+
+  // Pre-load onboardingComplete from Hive cache so the router
+  // doesn't redirect to onboarding on every cold start before
+  // the auth listener fires.
+  try {
+    final userBox = Hive.box(AppConstants.userBox);
+    final cachedUser = userBox.get('current_user');
+    if (cachedUser != null) {
+      final map = Map<String, dynamic>.from(cachedUser as Map);
+      final onboardingDone = map['onboardingComplete'] as bool? ?? false;
+      // We can't access providers here (no container yet), but we
+      // can set a static flag that the router reads.
+      _cachedOnboardingComplete = onboardingDone;
+    }
+  } catch (_) {}
+
   runApp(const ProviderScope(child: MiraApp()));
 }
+
+/// Set during main() from Hive cache — read by the router before
+/// the auth listener has a chance to fire.
+bool _cachedOnboardingComplete = false;

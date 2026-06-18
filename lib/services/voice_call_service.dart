@@ -96,8 +96,9 @@ class VoiceCallService {
     onAiSpoke?.call(greeting);
 
     await _audioService.playPreSpeakChime();
-    // Give the audio session time to settle after the chime before TTS.
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Give audioplayers time to fully release the audio session
+    // after the chime before TTS tries to play.
+    await Future.delayed(const Duration(milliseconds: 800));
     await _speakText(greeting);
 
     if (!_isCallActive) return;
@@ -107,27 +108,19 @@ class VoiceCallService {
   /// Centralized speak method — always sets _isSpeaking flag correctly
   /// so the mic never reactivates mid-sentence.
   ///
-  /// CRITICAL: Deactivates the speech-to-text audio session before TTS
-  /// playback, then reactivates it after. Without this, the
-  /// voiceCommunication audio session blocks just_audio playback on
-  /// Android, causing TTS to silently fail.
+  /// Audio session deactivation has been REMOVED — on many Samsung devices
+  /// session.setActive(false) kills audio output entirely for just_audio,
+  /// causing TTS to silently fail. The WAV header is already patched
+  /// correctly and just_audio can coexist with the speech_to_text session
+  /// as long as STT is stopped first.
   Future<void> _speakText(String text) async {
     // Set _isSpeaking BEFORE stop() so that _onSpeechStatus/_onSpeechError
     // callbacks are guarded from interfering during the transition.
     _isSpeaking = true;
     await _speech.stop(); // mic OFF before speaking
 
-    // Deactivate the STT audio session so TTS can use the speaker.
-    try {
-      final session = await AudioSession.instance;
-      await session.setActive(false);
-      AppLogger.info('Audio session deactivated for TTS');
-    } catch (e) {
-      AppLogger.warning('Failed to deactivate audio session: $e');
-    }
-
-    // Small delay to let the audio session release.
-    await Future.delayed(const Duration(milliseconds: 200));
+    // Small delay to let the mic fully release.
+    await Future.delayed(const Duration(milliseconds: 300));
 
     onPhaseChanged?.call(CallPhase.speaking);
     AppLogger.info('TTS speaking with voiceId: $_voiceId, text: ${text.substring(0, text.length.clamp(0, 50))}');
@@ -136,17 +129,8 @@ class VoiceCallService {
     final ok = await _ttsService.speak(text, voiceId: _voiceId);
 
     // Wait a beat after TTS finishes before clearing the speaking flag.
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(const Duration(milliseconds: 600));
     _isSpeaking = false;
-
-    // Reactivate the STT audio session for the next listening cycle.
-    try {
-      final session = await AudioSession.instance;
-      await session.setActive(true);
-      AppLogger.info('Audio session reactivated for STT');
-    } catch (e) {
-      AppLogger.warning('Failed to reactivate audio session: $e');
-    }
 
     if (!ok) {
       AppLogger.error('TTS failed for text: ${text.substring(0, text.length.clamp(0, 80))}');
@@ -168,6 +152,10 @@ class VoiceCallService {
         _isProcessing) return;
 
     final session = await AudioSession.instance;
+    // Use media usage instead of voiceCommunication — on Samsung devices
+    // voiceCommunication routes mic input exclusively to the earpiece,
+    // ignoring the main speaker mic. media usage works with the speaker
+    // mic AND bluetooth headsets.
     await session.configure(AudioSessionConfiguration(
       avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
       avAudioSessionCategoryOptions:
@@ -176,9 +164,9 @@ class VoiceCallService {
       avAudioSessionMode: AVAudioSessionMode.voiceChat,
       androidAudioAttributes: const AndroidAudioAttributes(
         contentType: AndroidAudioContentType.speech,
-        usage: AndroidAudioUsage.voiceCommunication,
+        usage: AndroidAudioUsage.media,
       ),
-      androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
+      androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
     ));
     await session.setActive(true);
 
