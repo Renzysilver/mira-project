@@ -96,103 +96,111 @@ class _CallScreenState extends ConsumerState<CallScreen>
 
           // Main content
           SafeArea(
-            child: Column(
-              children: [
-                // Back button
-                Align(
-                  alignment: Alignment.topLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: _GlassIconBtn(
-                      icon: Icons.arrow_back_ios_new_rounded,
-                      onTap: () {
-                        ref.read(callProvider.notifier).endCall();
-                        context.go('/home');
-                      },
-                    ),
-                  ),
-                ),
-
-                const Spacer(flex: 1),
-
-                // Phase label
-                _PhaseLabel(phase: callState.phase, status: callState.status,
-                  duration: callState.formattedDuration),
-
-                const SizedBox(height: 24),
-
-                // Avatar with glow ring
-                _AvatarWithGlow(
-                  personaName: personaState.persona.name,
-                  phase: callState.phase,
-                  pulseAnim: _pulseAnim,
-                  isSpeaking: callState.phase == CallPhase.speaking,
-                ),
-
-                const SizedBox(height: 20),
-
-                // Name
-                Text(personaState.persona.name,
-                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w200,
-                    color: AppTheme.moonWhite, letterSpacing: 3)),
-                const SizedBox(height: 6),
-                Text(personaState.persona.personalityType.name,
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, letterSpacing: 1.5)),
-
-                const SizedBox(height: 16),
-
-                // "Mira is speaking..." status text
-                _CallStatusText(
-                  phase: callState.phase,
-                  personaName: personaState.persona.name,
-                ),
-
-                const SizedBox(height: 12),
-
-                // Waveform visualization
-                if (callState.status == CallStatus.connected)
-                  _CallWaveform(
-                    phase: callState.phase,
-                    controller: _particleController,
-                  ),
-
-                const SizedBox(height: 16),
-
-                // Three phase chips row: Listening / Thinking / Speaking
-                if (callState.status == CallStatus.connected)
-                  _PhaseChipsRow(activePhase: callState.phase),
-
-                const SizedBox(height: 24),
-
-                // Speech transcript bubble — wrapped in Flexible so it
-                // takes available space without overflowing when text
-                // is long. Internal SingleChildScrollView keeps long
-                // text readable without breaking the call layout.
-                if (callState.lastAiSpeech.isNotEmpty ||
-                    callState.lastUserSpeech.isNotEmpty)
-                  Flexible(
-                    child: _TranscriptBubble(
-                      userText: callState.lastUserSpeech,
-                      aiText: callState.lastAiSpeech,
-                      name: personaState.persona.name,
+            child: SizedBox.expand(
+              child: Column(
+                children: [
+                  // Back button
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: _GlassIconBtn(
+                        icon: Icons.arrow_back_ios_new_rounded,
+                        onTap: () {
+                          ref.read(callProvider.notifier).endCall();
+                          context.go('/home');
+                        },
+                      ),
                     ),
                   ),
 
-                const Spacer(flex: 2),
+                  // Scrollable middle — everything between back btn and controls
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 8),
 
-                // Controls
-                _CallControls(
-                  callState: callState,
-                  onMute: () => ref.read(callProvider.notifier).toggleMute(),
-                  onSpeaker: () => ref.read(callProvider.notifier).toggleSpeaker(),
-                  onEnd: () {
-                    ref.read(callProvider.notifier).endCall();
-                    context.go('/home');
-                  },
-                ),
+                          // Phase label
+                          _PhaseLabel(phase: callState.phase, status: callState.status,
+                            duration: callState.formattedDuration),
 
-                const SizedBox(height: 48),
-              ],
+                          const SizedBox(height: 20),
+
+                          // Avatar with glow ring
+                          _AvatarWithGlow(
+                            personaName: personaState.persona.name,
+                            phase: callState.phase,
+                            pulseAnim: _pulseAnim,
+                            isSpeaking: callState.phase == CallPhase.speaking,
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Name
+                          Text(personaState.persona.name,
+                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w200,
+                              color: AppTheme.moonWhite, letterSpacing: 3)),
+                          const SizedBox(height: 4),
+                          Text(personaState.persona.personalityType.name,
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, letterSpacing: 1.5)),
+
+                          const SizedBox(height: 14),
+
+                          // "Mira is speaking..." status text
+                          _CallStatusText(
+                            phase: callState.phase,
+                            personaName: personaState.persona.name,
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // Waveform visualization
+                          if (callState.status == CallStatus.connected)
+                            _CallWaveform(
+                              phase: callState.phase,
+                              controller: _particleController,
+                            ),
+
+                          const SizedBox(height: 12),
+
+                          // Three phase chips row
+                          if (callState.status == CallStatus.connected)
+                            _PhaseChipsRow(activePhase: callState.phase),
+
+                          const SizedBox(height: 16),
+
+                          // Transcript bubble — only when there's content
+                          if (callState.lastAiSpeech.isNotEmpty ||
+                              callState.lastUserSpeech.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              child: _TranscriptBubble(
+                                userText: callState.lastUserSpeech,
+                                aiText: callState.lastAiSpeech,
+                                name: personaState.persona.name,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Controls always pinned at bottom
+                  _CallControls(
+                    callState: callState,
+                    onMute: () => ref.read(callProvider.notifier).toggleMute(),
+                    onSpeaker: () => ref.read(callProvider.notifier).toggleSpeaker(),
+                    onEnd: () {
+                      ref.read(callProvider.notifier).endCall();
+                      context.go('/home');
+                    },
+                  ),
+
+                  const SizedBox(height: 32),
+                ],
+              ),
             ),
           ),
         ],
