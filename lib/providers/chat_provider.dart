@@ -166,7 +166,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   Future<void> sendMessage(String content, PersonaModel persona) async {
-    if (content.trim().isEmpty || _storage == null || _companionId == null) {
+    if (content.trim().isEmpty) return;
+    if (_storage == null || _companionId == null) {
+      // No companion loaded yet — show an error so the user knows
+      // something is wrong instead of silently failing.
+      state = state.copyWith(
+        error: 'No companion active. Create one first.',
+        isLoading: false,
+        isTyping: false,
+      );
       return;
     }
 
@@ -227,8 +235,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
       );
       state = state.copyWith(isLoading: false, isTyping: false, lastAiResponseAt: DateTime.now());
     } catch (e) {
+      AppLogger.error('Chat _sendViaApi error', e);
       state = state.copyWith(
-        error: 'Failed to get response.',
+        error: 'Failed to get response: $e',
         isLoading: false,
         isTyping: false,
       );
