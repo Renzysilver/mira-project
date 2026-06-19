@@ -117,7 +117,9 @@ class _CallScreenState extends ConsumerState<CallScreen>
                   // Scrollable middle — everything between back btn and controls
                   Expanded(
                     child: SingleChildScrollView(
-                      physics: const NeverScrollableScrollPhysics(),
+                      // Allow scrolling when content is too tall (prevents
+                      // RenderFlex overflow when transcript is long).
+                      physics: const ClampingScrollPhysics(),
                       child: Column(
                         children: [
                           const SizedBox(height: 8),
