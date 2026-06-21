@@ -11,21 +11,39 @@ import '../features/chat/home_screen.dart';
 import '../features/chat/chat_screen.dart';
 import '../features/call/call_screen.dart';
 import '../features/persona/persona_screen.dart';
+import '../features/memory/memory_screen.dart';
+import '../features/companions/companions_screen.dart';
+import '../features/companion_creator/companion_creator_screen.dart';
+import '../features/mira/mira_assistant_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../providers/auth_provider.dart' show onboardingCompleteProvider;
+import '../main.dart' show cachedOnboardingComplete;
 
-final onboardingCompleteProvider = StateProvider<bool>((ref) => false);
+// onboardingCompleteProvider moved to auth_provider.dart to avoid
+// circular imports (auth_provider needs to sync it with Firestore).
 
 final routerProvider = Provider.family<GoRouter, bool>((ref, isAuthenticated) {
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
-      final onboardingComplete = ref.read(onboardingCompleteProvider);
-      final isOnboardingRoute = state.matchedLocation.startsWith('/onboarding');
-      final isAuthRoute = state.matchedLocation.startsWith('/auth');
+      // Use the provider value OR the Hive-cached value as fallback.
+      // The cache is set in main.dart before runApp() so the router
+      // has the right value on the very first redirect.
+      final onboardingComplete = ref.read(onboardingCompleteProvider) ||
+          cachedOnboardingComplete;
+      final loc = state.matchedLocation;
+      final isOnboardingRoute = loc.startsWith('/onboarding');
+      final isAuthRoute = loc.startsWith('/auth');
+      final isSplashRoute = loc == '/';
+
+      // Splash is always allowed — never redirect away from it.
+      // Splash handles its own navigation after the branding delay.
+      if (isSplashRoute) return null;
 
       if (!isAuthenticated && !isAuthRoute && !isOnboardingRoute) {
         return '/auth/login';
       }
+      // Authenticated users land on the Mira home screen.
       if (isAuthenticated && isAuthRoute) {
         if (!onboardingComplete) return '/onboarding';
         return '/home';
@@ -43,10 +61,20 @@ final routerProvider = Provider.family<GoRouter, bool>((ref, isAuthenticated) {
         GoRoute(path: '/name', builder: (context, state) => const NameSetupScreen()),
         GoRoute(path: '/personality', builder: (context, state) => const PersonalitySetupScreen()),
       ]),
+      GoRoute(path: '/mira', builder: (context, state) => const MiraAssistantScreen()),
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
       GoRoute(path: '/call', builder: (context, state) => const CallScreen()),
       GoRoute(path: '/persona', builder: (context, state) => const PersonaScreen()),
+      GoRoute(path: '/memory', builder: (context, state) => const MemoryScreen()),
+      GoRoute(path: '/companions', builder: (context, state) => const CompanionsScreen()),
+      GoRoute(path: '/companion/new', builder: (context, state) => const CompanionCreatorScreen()),
+      GoRoute(
+        path: '/companion/edit/:id',
+        builder: (context, state) => CompanionCreatorScreen(
+          editCompanionId: state.pathParameters['id'],
+        ),
+      ),
       GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
     ],
   );

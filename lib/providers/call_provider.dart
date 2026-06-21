@@ -5,6 +5,7 @@ import '../core/storage/firebase_storage.dart';
 import '../services/voice_call_service.dart';
 import '../providers/persona_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/companions_provider.dart';
 import '../models/call_model.dart';
 
 // ── Provider ───────────────────────────────────────────────────────────────
@@ -20,31 +21,54 @@ class CallNotifier extends StateNotifier<CallState> {
   final VoiceCallService _voiceCallService;
   final FirestoreStorage? _storage;
   Timer? _durationTimer;
+  bool _callWasStarted = false;
 
-  // Problem 3 — wire callbacks in constructor
   CallNotifier(this._ref, this._voiceCallService, this._storage)
       : super(CallState(
-    id: '',
-    status: CallStatus.ringing,
-    phase: CallPhase.dialing,
-    startedAt: DateTime.now(),
-  )) {
-    _voiceCallService.onPhaseChanged = (phase) =>
-    state = state.copyWith(phase: phase);
-    _voiceCallService.onUserSpoke = (text) =>
-    state = state.copyWith(lastUserSpeech: text);
-    _voiceCallService.onAiSpoke = (text) =>
-    state = state.copyWith(lastAiSpeech: text);
-    _voiceCallService.onError = (_) =>
-    state = state.copyWith(status: CallStatus.ended);
+          id: '',
+          status: CallStatus.ringing,
+          phase: CallPhase.dialing,
+          startedAt: DateTime.now(),
+        )) {
+    _voiceCallService.onPhaseChanged = (phase) {
+      // First non-dialing phase means the call is now connected.
+      final newStatus = (phase != CallPhase.dialing &&
+              state.status == CallStatus.ringing)
+          ? CallStatus.connected
+          : state.status;
+      final wasRinging = state.status == CallStatus.ringing;
+      state = state.copyWith(phase: phase, status: newStatus);
+      // Start the timer the moment we connect.
+      if (newStatus == CallStatus.connected && wasRinging) {
+        _startTimer();
+      }
+    };
+    _voiceCallService.onUserSpoke =
+        (text) => state = state.copyWith(lastUserSpeech: text);
+    _voiceCallService.onAiSpoke =
+        (text) => state = state.copyWith(lastAiSpeech: text);
+    _voiceCallService.onError =
+        (_) => state = state.copyWith(status: CallStatus.ended);
   }
 
-  // Problem 4 — initialize service before startCall
   Future<void> startCall() async {
+    if (_callWasStarted) {
+      // Prevent double-start if the screen rebuilds.
+      return;
+    }
+    _callWasStarted = true;
+
     final persona = _ref.read(personaProvider).persona;
     final user = _ref.read(authProvider).user;
+    // Read the active companion's voiceId so each companion sounds
+    // different during voice calls.
+    final activeCompanion = _ref.read(activeCompanionProvider);
 
-    await _voiceCallService.initialize(persona, user?.displayName);
+    await _voiceCallService.initialize(
+      persona,
+      user?.displayName,
+      voiceId: activeCompanion?.voiceId,
+    );
 
     state = CallState(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -54,11 +78,11 @@ class CallNotifier extends StateNotifier<CallState> {
     );
 
     await _voiceCallService.startCall();
-    _startTimer();
+    // Timer now starts automatically when the first non-dialing
+    // phase change sets status to connected.
   }
 
-  void toggleMute() =>
-      state = state.copyWith(isMuted: !state.isMuted);
+  void toggleMute() => state = state.copyWith(isMuted: !state.isMuted);
 
   void toggleSpeaker() =>
       state = state.copyWith(isSpeakerOn: !state.isSpeakerOn);
@@ -77,15 +101,40 @@ class CallNotifier extends StateNotifier<CallState> {
     _durationTimer?.cancel();
     await _voiceCallService.endCall();
 
-    final personaName = _ref.read(personaProvider).persona.name;
+    // Only persist a call log if the call actually started — otherwise we'd
+    // spam the history with zero-duration entries from quick back-outs.
+    if (_callWasStarted && state.id.isNotEmpty) {
+      final personaName = _ref.read(personaProvider).persona.name;
+      final companionId = _ref.read(personaProvider).companionId;
+      try {
+        // Use companion-scoped call log if we have an active companion;
+        // fall back to legacy /calls collection otherwise.
+        if (companionId != null && companionId.isNotEmpty) {
+          await _storage?.addCompanionCallLog(companionId, {
+            'personaName':
+                personaName.isNotEmpty ? personaName : 'Unknown',
+            'duration': state.durationSeconds,
+            'summary': state.lastAiSpeech,
+          });
+        } else {
+          await _storage?.addCallLog({
+            'personaName':
+                personaName.isNotEmpty ? personaName : 'Unknown',
+            'duration': state.durationSeconds,
+            'endedAt': FieldValue.serverTimestamp(),
+            'summary': state.lastAiSpeech,
+          });
+        }
+        // Bump the call count on the relationship stats
+        await _ref.read(personaProvider.notifier).incrementCallCount();
+      } catch (e) {
+        // Logging the call is best-effort — don't surface to the user.
+        // ignore: avoid_print
+        print('Failed to write call log: $e');
+      }
+    }
 
-    await _storage?.addCallLog({
-      'personaName': personaName.isNotEmpty ? personaName : 'Unknown',
-      'duration': state.durationSeconds,
-      'endedAt': FieldValue.serverTimestamp(),
-      'summary': state.lastAiSpeech,
-    });
-
+    _callWasStarted = false;
     state = state.copyWith(
       status: CallStatus.ended,
       endedAt: DateTime.now(),

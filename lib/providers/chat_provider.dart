@@ -9,16 +9,32 @@ import '../models/persona_model.dart';
 import '../services/ai_service.dart';
 import '../services/memory_service.dart';
 import '../providers/auth_provider.dart';
+import '../providers/companions_provider.dart';
 
 final aiServiceProvider = Provider<AiService>((ref) => AiService());
 
+/// Chat provider — now scoped per-companion.
+///
+/// Watches [activeCompanionProvider] and re-subscribes to the messages
+/// stream when the active companion changes. Each companion has its own
+/// independent chat history at:
+///   users/{uid}/companions/{companionId}/messages/
+///
+/// IMPORTANT: uses `.select((c) => c?.id)` so the provider only rebuilds
+/// when the companion ID changes — NOT when the companion doc updates
+/// (e.g. affection increment, milestone unlock). Without this, writing
+/// to the companion doc mid-flight would dispose the ChatNotifier and
+/// lose the in-progress API response.
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
   final storage = ref.watch(firestoreStorageProvider);
+  final activeCompanionId =
+      ref.watch(activeCompanionProvider.select((c) => c?.id));
   return ChatNotifier(
     ref.read(webSocketClientProvider),
     storage,
     ref.read(memoryServiceProvider),
     ref.read(aiServiceProvider),
+    activeCompanionId,
   );
 });
 
@@ -67,25 +83,37 @@ class ChatNotifier extends StateNotifier<ChatState> {
   final FirestoreStorage? _storage;
   final MemoryService _memoryService;
   final AiService _aiService;
+  final String? _companionId;
   final _uuid = const Uuid();
   StreamSubscription? _messagesSub;
   static const String _conversationId = 'main';
 
-  ChatNotifier(this._wsClient, this._storage, this._memoryService, this._aiService)
-      : super(const ChatState()) {
-    if (_storage != null) _subscribe();
+  ChatNotifier(
+    this._wsClient,
+    this._storage,
+    this._memoryService,
+    this._aiService,
+    this._companionId,
+  ) : super(const ChatState()) {
+    if (_storage != null && _companionId != null) _subscribe();
     _setupWebSocket();
   }
 
   void _subscribe() {
-    _messagesSub = _storage!.watchMessages(_conversationId).listen(
-          (maps) {
+    // Clear existing messages first so switching feels instant —
+    // the new companion's history streams in immediately after.
+    state = state.copyWith(messages: [], isLoading: true);
+    _messagesSub?.cancel();
+    _messagesSub = _storage!.watchCompanionMessages(_companionId!).listen(
+      (maps) {
         state = state.copyWith(
           messages: maps.map((m) => MessageModel.fromJson(m)).toList(),
+          isLoading: false,
         );
       },
       onError: (e) {
         AppLogger.error('chatProvider stream error', e);
+        state = state.copyWith(isLoading: false);
       },
     );
   }
@@ -107,12 +135,19 @@ class ChatNotifier extends StateNotifier<ChatState> {
             content: fullContent,
             timestamp: DateTime.now(),
           );
-          // Write to Firestore — stream listener updates state automatically
-          _storage?.addMessage(
-            aiMessage.toJson(),
-            _conversationId,
-          );
-          state = state.copyWith(streamingContent: '', isTyping: false, isLoading: false, lastAiResponseAt: DateTime.now());
+          // Write to companion-scoped messages collection
+          if (_companionId != null) {
+            _storage?.addCompanionMessage(
+              _companionId!,
+              aiMessage.toJson(),
+              conversationId: _conversationId,
+            );
+          }
+          state = state.copyWith(
+              streamingContent: '',
+              isTyping: false,
+              isLoading: false,
+              lastAiResponseAt: DateTime.now());
         }
       } else {
         state = state.copyWith(
@@ -131,7 +166,17 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   Future<void> sendMessage(String content, PersonaModel persona) async {
-    if (content.trim().isEmpty || _storage == null) return;
+    if (content.trim().isEmpty) return;
+    if (_storage == null || _companionId == null) {
+      // No companion loaded yet — show an error so the user knows
+      // something is wrong instead of silently failing.
+      state = state.copyWith(
+        error: 'No companion active. Create one first.',
+        isLoading: false,
+        isTyping: false,
+      );
+      return;
+    }
 
     final userMessage = MessageModel(
       id: _uuid.v4(),
@@ -140,10 +185,12 @@ class ChatNotifier extends StateNotifier<ChatState> {
       timestamp: DateTime.now(),
     );
 
-    // Write to Firestore — stream updates state, no manual copyWith needed
-    await _storage.addMessage(
-        userMessage.toJson(),
-      _conversationId);
+    // Write to companion-scoped messages
+    await _storage.addCompanionMessage(
+      _companionId!,
+      userMessage.toJson(),
+      conversationId: _conversationId,
+    );
 
     state = state.copyWith(
       isLoading: true,
@@ -152,6 +199,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       error: null,
     );
 
+    // Process memory for the active companion
     await _memoryService.processMessage(content);
 
     final allMessages = [...state.messages, userMessage];
@@ -180,13 +228,16 @@ class ChatNotifier extends StateNotifier<ChatState> {
         content: response,
         timestamp: DateTime.now(),
       );
-      await _storage?.addMessage(
-          aiMessage.toJson(),
-        _conversationId);
+      await _storage?.addCompanionMessage(
+        _companionId!,
+        aiMessage.toJson(),
+        conversationId: _conversationId,
+      );
       state = state.copyWith(isLoading: false, isTyping: false, lastAiResponseAt: DateTime.now());
     } catch (e) {
+      AppLogger.error('Chat _sendViaApi error', e);
       state = state.copyWith(
-        error: 'Failed to get response.',
+        error: 'Failed to get response: $e',
         isLoading: false,
         isTyping: false,
       );
@@ -194,8 +245,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   Future<void> clearMessages() async {
-    if (_storage == null) return;
-    await _storage.clearMessages(_conversationId);
+    if (_storage == null || _companionId == null) return;
+    await _storage.clearCompanionMessages(_companionId!, conversationId: _conversationId);
     state = const ChatState();
   }
 }

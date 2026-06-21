@@ -13,6 +13,9 @@ import '../models/message_model.dart';
 import 'package:uuid/uuid.dart';
 
 final voiceCallServiceProvider = Provider<VoiceCallService>((ref) {
+  // Watch memoryServiceProvider so the voice call service picks up the
+  // active companion's memory at call time. ref.read is enough because
+  // voice calls are short-lived; the user won't switch companions mid-call.
   return VoiceCallService(AiService(), ref.read(memoryServiceProvider));
 });
 
@@ -26,6 +29,12 @@ class VoiceCallService {
 
   bool _isInitialized = false;
   bool _isCallActive = false;
+  bool _isSpeaking = false;
+  bool _isProcessing = false;
+  int _consecutiveSttErrors = 0;
+  static const int _maxSttErrors = 5;
+  String? _voiceId;  // Per-companion voice identity
+
   List<Map<String, String>> _conversationHistory = [];
   PersonaModel? _persona;
   String? _userName;
@@ -39,21 +48,27 @@ class VoiceCallService {
       : _audioService = AudioService(),
         _ttsService = ElevenLabsService();
 
-  Future<void> initialize(PersonaModel persona, String? userName) async {
-    if (_isInitialized) return;
+  Future<void> initialize(PersonaModel persona, String? userName, {String? voiceId}) async {
+    // Always update persona/voiceId even if already initialized —
+    // the user may have switched companions since the last call.
     _persona = persona;
     _userName = userName;
+    _voiceId = voiceId;
 
-    await _speech.initialize(
-      onError: (error) => _onSpeechError(error),
-      onStatus: (status) => _onSpeechStatus(status),
-    );
-
-    _isInitialized = true;
+    if (!_isInitialized) {
+      await _speech.initialize(
+        onError: (error) => _onSpeechError(error),
+        onStatus: (status) => _onSpeechStatus(status),
+      );
+      _isInitialized = true;
+    }
   }
 
   Future<void> startCall() async {
     _isCallActive = true;
+    _isSpeaking = false;
+    _isProcessing = false;
+    _consecutiveSttErrors = 0;
     _conversationHistory = [];
 
     final status = await Permission.microphone.request();
@@ -67,47 +82,91 @@ class VoiceCallService {
     onPhaseChanged?.call(CallPhase.dialing);
     await _audioService.startRinging();
     await Future.delayed(const Duration(seconds: 4));
-
     if (!_isCallActive) return;
 
     await _audioService.stopRinging();
     await _audioService.playCallConnected();
-
     if (!_isCallActive) return;
 
     final greeting = _userName != null && _userName!.isNotEmpty
-        ? 'Hey $_userName! I\'m so happy you called. How are you doing?'
-        : 'Hey! I\'m so happy you called. How are you doing?';
+        ? 'Hi $_userName, this is Mira. How can I help you?'
+        : 'Hi, this is Mira. How can I help you?';
 
     _conversationHistory.add({'role': 'assistant', 'content': greeting});
     onAiSpoke?.call(greeting);
 
     await _audioService.playPreSpeakChime();
-    await _speech.stop();
-      onPhaseChanged?.call(CallPhase.speaking);
-
-    await _ttsService.speak(greeting);
+    // Give audioplayers time to fully release the audio session
+    // after the chime before TTS tries to play.
+    await Future.delayed(const Duration(milliseconds: 800));
+    await _speakText(greeting);
 
     if (!_isCallActive) return;
-
     _startListening();
   }
 
-    void _startListening() async {
-    if (!_isCallActive || !_speech.isAvailable || _speech.isListening) return;
+  /// Centralized speak method — always sets _isSpeaking flag correctly
+  /// so the mic never reactivates mid-sentence.
+  ///
+  /// Audio session deactivation has been REMOVED — on many Samsung devices
+  /// session.setActive(false) kills audio output entirely for just_audio,
+  /// causing TTS to silently fail. The WAV header is already patched
+  /// correctly and just_audio can coexist with the speech_to_text session
+  /// as long as STT is stopped first.
+  Future<void> _speakText(String text) async {
+    // Set _isSpeaking BEFORE stop() so that _onSpeechStatus/_onSpeechError
+    // callbacks are guarded from interfering during the transition.
+    _isSpeaking = true;
+    await _speech.stop(); // mic OFF before speaking
+
+    // Small delay to let the mic fully release.
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    onPhaseChanged?.call(CallPhase.speaking);
+    AppLogger.info('TTS speaking with voiceId: $_voiceId, text: ${text.substring(0, text.length.clamp(0, 50))}');
+
+    // Pass the companion's voiceId so each companion sounds different.
+    final ok = await _ttsService.speak(text, voiceId: _voiceId);
+
+    // Wait a beat after TTS finishes before clearing the speaking flag.
+    await Future.delayed(const Duration(milliseconds: 600));
+    _isSpeaking = false;
+
+    if (!ok) {
+      AppLogger.error('TTS failed for text: ${text.substring(0, text.length.clamp(0, 80))}');
+      // Don't end the call on TTS failure — just skip this response
+      // and return to listening so the user can try again.
+      if (_isCallActive) {
+        onPhaseChanged?.call(CallPhase.listening);
+        _startListening();
+      }
+      return;
+    }
+  }
+
+  void _startListening() async {
+    if (!_isCallActive ||
+        !_speech.isAvailable ||
+        _speech.isListening ||
+        _isSpeaking ||
+        _isProcessing) return;
 
     final session = await AudioSession.instance;
-    await session.configure(AudioSessionConfiguration(  // <-- REMOVED 'const'
+    // Use media usage instead of voiceCommunication — on Samsung devices
+    // voiceCommunication routes mic input exclusively to the earpiece,
+    // ignoring the main speaker mic. media usage works with the speaker
+    // mic AND bluetooth headsets.
+    await session.configure(AudioSessionConfiguration(
       avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
-      avAudioSessionCategoryOptions: 
-        AVAudioSessionCategoryOptions.defaultToSpeaker |
-        AVAudioSessionCategoryOptions.allowBluetooth,
+      avAudioSessionCategoryOptions:
+          AVAudioSessionCategoryOptions.defaultToSpeaker |
+          AVAudioSessionCategoryOptions.allowBluetooth,
       avAudioSessionMode: AVAudioSessionMode.voiceChat,
       androidAudioAttributes: const AndroidAudioAttributes(
         contentType: AndroidAudioContentType.speech,
-        usage: AndroidAudioUsage.voiceCommunication,
+        usage: AndroidAudioUsage.media,
       ),
-      androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
+      androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
     ));
     await session.setActive(true);
 
@@ -116,21 +175,25 @@ class VoiceCallService {
     _speech.listen(
       onResult: (result) {
         if (result.finalResult) {
+          _consecutiveSttErrors = 0; // successful recognition resets the counter
           final text = result.recognizedWords.trim();
           if (text.isNotEmpty) {
             _processUserSpeech(text);
           } else {
-            if (_isCallActive) _startListening();
+            if (_isCallActive && !_isSpeaking && !_isProcessing) {
+              _startListening();
+            }
           }
         }
       },
-      listenFor: const Duration(seconds: 20),
-      pauseFor: const Duration(seconds: 3),
+      listenFor: const Duration(seconds: 30),
+      pauseFor: const Duration(seconds: 5),
     );
   }
 
   Future<void> _processUserSpeech(String text) async {
-    if (!_isCallActive) return;
+    if (!_isCallActive || _isProcessing || _isSpeaking) return;
+    _isProcessing = true;
 
     onUserSpoke?.call(text);
     onPhaseChanged?.call(CallPhase.thinking);
@@ -167,48 +230,64 @@ class VoiceCallService {
       onAiSpoke?.call(aiResponse);
 
       await _audioService.playPreSpeakChime();
-      await _speech.stop();
-      onPhaseChanged?.call(CallPhase.speaking);
-
-      await _ttsService.speak(aiResponse);
-
-      if (!_isCallActive) return;
-
-      await Future.delayed(const Duration(milliseconds: 1000));
-
-      if (_isCallActive) _startListening();
+      await _speakText(aiResponse);
     } catch (e) {
       AppLogger.error('Voice call AI error', e);
-      onError?.call('Something went wrong. Ending call.');
+      onError?.call('Something went wrong.');
       _isCallActive = false;
+    } finally {
+      // Reset all flags BEFORE calling _startListening — _startListening
+      // guards against _isProcessing and _isSpeaking, so it must run
+      // after both are false.
+      _isProcessing = false;
+      _isSpeaking = false;
+      // Start listening AFTER finally resets all flags.
+      if (_isCallActive) _startListening();
     }
   }
 
   void _onSpeechError(dynamic error) {
-    AppLogger.error('STT Error: $error');
-    if (_isCallActive) {
+    if (_isSpeaking) return; // Guard: ignore STT errors during TTS playback
+    AppLogger.warning('STT Error: $error');
+    _consecutiveSttErrors++;
+    if (_consecutiveSttErrors >= _maxSttErrors) {
+      AppLogger.error('STT error cap reached ($_consecutiveSttErrors) — ending call');
+      onError?.call('Speech recognition is having trouble. Ending call.');
+      _isCallActive = false;
+      return;
+    }
+    if (_isCallActive && !_isSpeaking && !_isProcessing) {
       Future.delayed(const Duration(milliseconds: 800), () {
-        if (_isCallActive) _startListening();
+        if (_isCallActive && !_isSpeaking && !_isProcessing) _startListening();
       });
     }
   }
 
   void _onSpeechStatus(String status) {
-    if (status == 'notListening' && _isCallActive && !_speech.isListening) {
+    if (_isSpeaking) return; // Guard: ignore STT status changes during TTS
+    AppLogger.info('STT status: $status');
+    if (status == 'notListening' &&
+        _isCallActive &&
+        !_isSpeaking &&
+        !_isProcessing &&
+        !_speech.isListening) {
       Future.delayed(const Duration(milliseconds: 500), () {
-        if (_isCallActive) _startListening();
+        if (_isCallActive && !_isSpeaking && !_isProcessing) _startListening();
       });
     }
   }
 
   Future<void> endCall() async {
     _isCallActive = false;
+    _isSpeaking = false;
+    _isProcessing = false;
     await _speech.stop();
     await _ttsService.stop();
     await _audioService.stopRinging();
   }
 
   void dispose() {
+    // Fire-and-forget endCall — we cannot await in dispose.
     endCall();
     _audioService.dispose();
     _ttsService.dispose();

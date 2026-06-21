@@ -25,31 +25,28 @@ class _MiraAvatarWidgetState extends ConsumerState<MiraAvatarWidget> {
   @override
   void initState() {
     super.initState();
-    // Load after first frame so ref.read works safely
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadRive());
   }
 
   String _assetPath(AvatarType type) {
     switch (type) {
-      case AvatarType.animeGirlRemix: return 'assets/animations/animegirl.riv';
-      case AvatarType.animeGirl:      return 'assets/animations/animegirl2.riv';
+      case AvatarType.animeGirlRemix:
+        return 'assets/animations/animegirl.riv';
+      case AvatarType.animeGirl:
+        return 'assets/animations/animegirl2.riv';
     }
-  }
-
-  String _stateMachineName(AvatarType type) {
-    // Both files use 'State Machine 1'
-    return 'State Machine 1';
   }
 
   Future<void> _loadRive() async {
     final type = ref.read(avatarTypeProvider);
 
-    final file     = await RiveFile.asset(_assetPath(type));
+    final file = await RiveFile.asset(_assetPath(type));
     final artboard = file.mainArtboard;
-    final talking  = MiraTalkingController(type);
+    final talking = MiraTalkingController(type);
 
     final sm = StateMachineController.fromArtboard(
-      artboard, _stateMachineName(type),
+      artboard,
+      'State Machine 1',
     );
     if (sm != null) {
       artboard.addController(sm);
@@ -60,42 +57,50 @@ class _MiraAvatarWidgetState extends ConsumerState<MiraAvatarWidget> {
 
     if (mounted) {
       setState(() {
-        _artboard   = artboard;
-        _talking    = talking;
+        _artboard = artboard;
+        _talking = talking;
         _loadedType = type;
-        _loaded     = true;
+        _loaded = true;
       });
     }
   }
 
-  // Called when user switches avatar in settings — reloads the widget
   Future<void> _reload(AvatarType newType) async {
     if (newType == _loadedType) return;
-    setState(() { _loaded = false; _artboard = null; });
+    setState(() {
+      _loaded = false;
+      _artboard = null;
+    });
     _stateMachine?.dispose();
+    _stateMachine = null;
+    _talking = null;
     await _loadRive();
   }
 
   @override
   void dispose() {
+    // Dispose the controllers we own. The Artboard itself is GC'd when no
+    // longer referenced — Rive's Artboard class does not expose dispose().
     _stateMachine?.dispose();
+    _talking = null;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Reload if avatar type changed
     ref.listen<AvatarType>(avatarTypeProvider, (_, next) => _reload(next));
 
-    // Drive mouth from speaking state
     ref.listen<bool>(isMiraSpeakingProvider, (_, speaking) {
       speaking ? _talking?.startTalking() : _talking?.stopTalking();
     });
 
     if (!_loaded || _artboard == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const SizedBox.shrink();
     }
 
-    return Rive(artboard: _artboard!, fit: BoxFit.contain);
+    // Use BoxFit.cover so the character fills whatever container it's
+    // placed in. Callers control the visible area via their own
+    // Positioned / SizedBox constraints.
+    return Rive(artboard: _artboard!, fit: BoxFit.cover);
   }
 }
