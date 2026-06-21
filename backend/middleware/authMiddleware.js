@@ -29,17 +29,25 @@ async function verifyFirebaseToken(req, res, next) {
     return res.status(401).json({ error: 'No token provided' });
   }
   const idToken = authHeader.split('Bearer ')[1];
+
   try {
     if (admin.apps.length > 0) {
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       req.userId = decodedToken.uid;
       req.userEmail = decodedToken.email;
-    } else {
-      req.userId = req.headers['x-user-id'] || 'dev-user';
+      return next();
     }
+
+    // Firebase not configured — only allow the x-user-id fallback in
+    // non-production environments. In production we hard-fail.
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(401).json({ error: 'Auth backend not configured' });
+    }
+    req.userId = req.headers['x-user-id'] || 'dev-user';
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 }
+
 module.exports = { verifyFirebaseToken };

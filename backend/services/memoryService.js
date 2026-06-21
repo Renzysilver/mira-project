@@ -1,3 +1,10 @@
+/**
+ * In-memory memory store.
+ *
+ * ⚠️  Dev-only: data is lost on every backend restart. For production, swap
+ * the Maps below for Firestore / Postgres / Redis — the public API stays the
+ * same.
+ */
 const memoryStore = new Map();
 const conversationHistory = new Map();
 
@@ -23,8 +30,15 @@ function processUserMessage(userId, content) {
   if (history.length > 20) history.shift();
 }
 
+/**
+ * Extract a memorable fact from a user message.
+ *
+ * Bug fix: the previous implementation matched against the lowercased message
+ * and captured from that lowercased string, so "My name is Alice" was stored
+ * as "User's name is alice". We now match case-insensitively but capture
+ * from the ORIGINAL message so names and proper nouns keep their case.
+ */
 function extractFact(message) {
-  const lowerMessage = message.toLowerCase();
   const patterns = [
     { pattern: /my name is (\w+)/i, template: (m) => `User's name is ${m[1]}` },
     { pattern: /i (?:like|love) (.+?)(?:\.|!|$)/i, template: (m) => `User likes ${m[1]}` },
@@ -32,7 +46,7 @@ function extractFact(message) {
     { pattern: /my (?:favorite|fav) (.+?) is (.+?)(?:\.|!|$)/i, template: (m) => `User's favorite ${m[1]} is ${m[2]}` },
   ];
   for (const { pattern, template } of patterns) {
-    const match = lowerMessage.match(pattern);
+    const match = message.match(pattern); // match against ORIGINAL message
     if (match) return template(match);
   }
   return null;

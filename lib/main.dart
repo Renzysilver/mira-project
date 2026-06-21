@@ -10,7 +10,6 @@ import 'core/utils/logger.dart';
 import 'core/assistant/command_registry.dart';
 import 'core/assistant/local_commands.dart';
 import 'core/assistant/ai_commands.dart';
-import 'core/assistant/reminder_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -60,6 +59,7 @@ void main() async {
   CommandRegistry.register(DraftCommand());
   // RemindCommand is registered by the reminderServiceProvider consumer
   // in app.dart — it needs the service instance.
+
   AppLogger.info('Mirabel initialized');
 
   // Pre-load onboardingComplete from Hive cache so the router
