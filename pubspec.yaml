@@ -48,6 +48,9 @@ dependencies:
   rive: ^0.13.0
   audio_session: ^0.1.21          # runtime dep — used by voice_call_service.dart
   url_launcher: ^6.3.2
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.7
+  back_button_interceptor: ^8.0.4
 
 dev_dependencies:
   flutter_test:
@@ -64,3 +67,14 @@ flutter:
     - assets/animations/
     - assets/images/
     - assets/audio/
+
+flutter_launcher_icons:
+  android: true
+  image_path: "assets/images/app_icon.png"
+
+flutter_native_splash:
+  color: "#121212"
+  image: assets/images/app_icon.png
+  android_12:
+    color: "#121212"
+    image: assets/images/app_icon.png
