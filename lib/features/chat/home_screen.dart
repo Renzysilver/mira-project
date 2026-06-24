@@ -4,10 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../app/theme.dart';
-import '../../core/storage/firebase_storage.dart';
-import '../../models/persona_model.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/companions_provider.dart';
 import '../../providers/persona_provider.dart';
 import '../../widgets/atmosphere/atmospheric_background.dart';
 import '../../widgets/mira_avatar.dart';
@@ -15,7 +12,7 @@ import '../../widgets/shell/main_shell.dart';
 import '../../widgets/shell/mira_sidebar.dart';
 
 final _callHistoryProvider =
-    StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
   final storage = ref.watch(firestoreStorageProvider);
   final companionId = ref.watch(personaProvider.select((s) => s.companionId));
   if (storage == null || companionId == null) return Stream.value([]);
@@ -68,8 +65,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             context.go('/chat', extra: _voiceText);
           }
         },
-        listenFor: const Duration(seconds: 10),
-        pauseFor: const Duration(seconds: 3),
+        listenOptions: stt.SpeechListenOptions(
+          listenFor: const Duration(seconds: 10),
+          pauseFor: const Duration(seconds: 3),
+        ),
       );
     }
   }

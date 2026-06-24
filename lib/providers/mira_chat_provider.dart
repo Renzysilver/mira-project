@@ -5,7 +5,6 @@ import '../core/ai/ai_provider_registry.dart';
 import '../core/storage/firebase_storage.dart';
 import '../core/utils/logger.dart';
 import '../models/message_model.dart';
-import '../services/ai_service.dart';
 import 'auth_provider.dart';
 
 /// Mira's system prompt — she's a balanced AI assistant, NOT a companion.

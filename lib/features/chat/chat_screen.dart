@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,7 +13,6 @@ import '../../providers/persona_provider.dart';
 import '../../services/memory_service.dart' show memoryFactsProvider;
 import '../../widgets/chat_bubble.dart';
 import '../../widgets/typing_indicator.dart';
-import '../../widgets/mira_avatar.dart';
 import '../../widgets/shell/main_shell.dart';
 import '../../widgets/shell/companion_switcher.dart';
 import '../../app/theme.dart';

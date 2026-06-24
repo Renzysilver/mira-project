@@ -3,7 +3,6 @@ import '../core/storage/firebase_storage.dart';
 import '../core/utils/logger.dart';
 import '../models/persona_model.dart';
 import '../providers/auth_provider.dart';
-import '../providers/persona_provider.dart';
 
 final onboardingProvider = StateNotifierProvider<OnboardingNotifier, OnboardingState>((ref) {
   final storage = ref.watch(firestoreStorageProvider);

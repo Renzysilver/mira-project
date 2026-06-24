@@ -2,12 +2,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audio_session/audio_session.dart';
+import 'package:hive/hive.dart';
 import '../core/utils/logger.dart';
+import '../core/constants/app_constants.dart';
 import '../models/call_model.dart';
 import '../services/ai_service.dart';
 import '../services/memory_service.dart';
 import '../services/audio_service.dart';
 import '../services/elevenlabs_service.dart';
+import '../services/wakeword_service.dart';
 import '../models/persona_model.dart';
 import '../models/message_model.dart';
 import 'package:uuid/uuid.dart';
@@ -70,6 +73,14 @@ class VoiceCallService {
     _isProcessing = false;
     _consecutiveSttErrors = 0;
     _conversationHistory = [];
+
+    // Stop wake word listening — it shares the same SpeechRecognizer resource.
+    // If both run simultaneously the mic cuts in and out during the call.
+    await WakeWordBridge.stop();
+    // Give Android time to fully tear down WakeWordService.onDestroy()
+    // before speech_to_text grabs SpeechRecognizer. stopService() returns
+    // before onDestroy() actually finishes on the native side.
+    await Future.delayed(const Duration(milliseconds: 500));
 
     final status = await Permission.microphone.request();
     if (!status.isGranted) {
@@ -159,8 +170,8 @@ class VoiceCallService {
     await session.configure(AudioSessionConfiguration(
       avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
       avAudioSessionCategoryOptions:
-          AVAudioSessionCategoryOptions.defaultToSpeaker |
-          AVAudioSessionCategoryOptions.allowBluetooth,
+      AVAudioSessionCategoryOptions.defaultToSpeaker |
+      AVAudioSessionCategoryOptions.allowBluetooth,
       avAudioSessionMode: AVAudioSessionMode.voiceChat,
       androidAudioAttributes: const AndroidAudioAttributes(
         contentType: AndroidAudioContentType.speech,
@@ -186,8 +197,10 @@ class VoiceCallService {
           }
         }
       },
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 5),
+      listenOptions: stt.SpeechListenOptions(
+        listenFor: const Duration(seconds: 30),
+        pauseFor: const Duration(seconds: 5),
+      ),
     );
   }
 
@@ -212,11 +225,11 @@ class VoiceCallService {
       final memoryFacts = await _memoryService.getMemoryFacts();
       final messages = _conversationHistory
           .map((m) => MessageModel(
-                id: _uuid.v4(),
-                role: m['role']!,
-                content: m['content']!,
-                timestamp: DateTime.now(),
-              ))
+        id: _uuid.v4(),
+        role: m['role']!,
+        content: m['content']!,
+        timestamp: DateTime.now(),
+      ))
           .toList();
 
       final aiResponse = await _aiService.sendMessage(
@@ -284,6 +297,13 @@ class VoiceCallService {
     await _speech.stop();
     await _ttsService.stop();
     await _audioService.stopRinging();
+
+    // Restart wake word if the user had it enabled before the call.
+    try {
+      final box = Hive.box(AppConstants.settingsBox);
+      final enabled = box.get('wakeWordEnabled', defaultValue: false) as bool;
+      if (enabled) await WakeWordBridge.start();
+    } catch (_) {}
   }
 
   void dispose() {

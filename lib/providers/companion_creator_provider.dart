@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../core/storage/firebase_storage.dart';
 import '../core/utils/logger.dart';
 import '../models/companion_creator_state.dart';
 import '../models/persona_model.dart';

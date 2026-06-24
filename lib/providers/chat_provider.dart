@@ -138,7 +138,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
           // Write to companion-scoped messages collection
           if (_companionId != null) {
             _storage?.addCompanionMessage(
-              _companionId!,
+              _companionId,
               aiMessage.toJson(),
               conversationId: _conversationId,
             );
@@ -187,7 +187,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
     // Write to companion-scoped messages
     await _storage.addCompanionMessage(
-      _companionId!,
+      _companionId,
       userMessage.toJson(),
       conversationId: _conversationId,
     );
@@ -246,7 +246,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   Future<void> clearMessages() async {
     if (_storage == null || _companionId == null) return;
-    await _storage.clearCompanionMessages(_companionId!, conversationId: _conversationId);
+    await _storage.clearCompanionMessages(_companionId, conversationId: _conversationId);
     state = const ChatState();
   }
 }

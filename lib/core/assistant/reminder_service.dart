@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
-import '../constants/app_constants.dart';
 import '../utils/logger.dart';
 import 'command_registry.dart';
 

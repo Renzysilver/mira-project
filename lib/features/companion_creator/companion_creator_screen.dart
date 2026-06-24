@@ -1,11 +1,7 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../app/theme.dart';
-import '../../core/storage/firebase_storage.dart';
-import '../../models/persona_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/atmosphere/atmospheric_background.dart';
 import 'companion_creator_provider.dart';

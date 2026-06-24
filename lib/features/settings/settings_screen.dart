@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/persona_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/wakeword_provider.dart';
 import '../../app/theme.dart';
 import '../../widgets/atmosphere/atmospheric_background.dart';
 import '../../widgets/shell/main_shell.dart';
@@ -12,13 +13,13 @@ import '../../widgets/avatar_switcher_widget.dart';
 /// Resolves a thumb color that's [activeColor] when the switch is selected.
 WidgetStateProperty<Color?> _activeThumb(Color activeColor) =>
     WidgetStateProperty.resolveWith<Color?>((states) =>
-        states.contains(WidgetState.selected) ? activeColor : null);
+    states.contains(WidgetState.selected) ? activeColor : null);
 
 WidgetStateProperty<Color?> _activeTrack(Color activeColor) =>
     WidgetStateProperty.resolveWith<Color?>((states) => states
         .contains(WidgetState.selected)
-        ? activeColor.withOpacity(0.4)
-        : Colors.white.withOpacity(0.08));
+        ? activeColor.withValues(alpha: 0.4)
+        : Colors.white.withValues(alpha: 0.08));
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -27,6 +28,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final personaState = ref.watch(personaProvider);
+    final wakeWordEnabled = ref.watch(wakeWordProvider);
 
     return MainShell(
       // Settings isn't in the bottom nav — default to -1 so nothing is active.
@@ -45,19 +47,19 @@ class SettingsScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('settings',
-                        style: TextStyle(fontSize: 12,
-                          color: AppTheme.textSecondary, letterSpacing: 2)),
+                      const Text('settings',
+                          style: TextStyle(fontSize: 12,
+                              color: AppTheme.textSecondary, letterSpacing: 2)),
                       const SizedBox(height: 4),
                       ShaderMask(
                         shaderCallback: (b) =>
                             AppTheme.auroraGradient.createShader(b),
                         child: const Text('Tune your bond',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w300,
-                            color: Colors.white,
-                            letterSpacing: 1.5)),
+                            style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w300,
+                                color: Colors.white,
+                                letterSpacing: 1.5)),
                       ),
                     ],
                   ),
@@ -65,18 +67,18 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
 
                 // Persona section
-                _SectionLabel(label: 'Persona'),
+                const _SectionLabel(label: 'Persona'),
                 const SizedBox(height: 10),
                 _GlassCard(
                   child: Column(
                     children: [
                       SwitchListTile(
                         title: const Text('Flirt Mode',
-                          style: TextStyle(
-                              color: AppTheme.moonWhite, fontSize: 14)),
+                            style: TextStyle(
+                                color: AppTheme.moonWhite, fontSize: 14)),
                         subtitle: const Text('Enable romantic responses',
-                          style: TextStyle(
-                              color: AppTheme.textSecondary, fontSize: 12)),
+                            style: TextStyle(
+                                color: AppTheme.textSecondary, fontSize: 12)),
                         value: personaState.persona.flirtEnabled,
                         onChanged: (_) => ref
                             .read(personaProvider.notifier)
@@ -86,11 +88,11 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       SwitchListTile(
                         title: const Text('Friendship Mode',
-                          style: TextStyle(
-                              color: AppTheme.moonWhite, fontSize: 14)),
+                            style: TextStyle(
+                                color: AppTheme.moonWhite, fontSize: 14)),
                         subtitle: const Text('Keep conversations platonic',
-                          style: TextStyle(
-                              color: AppTheme.textSecondary, fontSize: 12)),
+                            style: TextStyle(
+                                color: AppTheme.textSecondary, fontSize: 12)),
                         value: personaState.persona.friendshipMode,
                         onChanged: (_) => ref
                             .read(personaProvider.notifier)
@@ -104,10 +106,10 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
 
                 // Avatar section
-                _SectionLabel(label: 'Avatar'),
+                const _SectionLabel(label: 'Avatar'),
                 const SizedBox(height: 10),
-                _GlassCard(
-                  child: const Padding(
+                const _GlassCard(
+                  child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: AvatarSwitcherWidget(),
                   ),
@@ -115,18 +117,32 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
 
                 // Notifications / Voice
-                _SectionLabel(label: 'App'),
+                const _SectionLabel(label: 'App'),
                 const SizedBox(height: 10),
                 _GlassCard(
                   child: Column(
                     children: [
                       SwitchListTile(
+                        title: const Text('Hey Mira',
+                            style: TextStyle(
+                                color: AppTheme.moonWhite, fontSize: 14)),
+                        subtitle: const Text('Say "Hey Mira" to start a call — works even when the app is closed',
+                            style: TextStyle(
+                                color: AppTheme.textSecondary, fontSize: 12)),
+                        value: wakeWordEnabled,
+                        onChanged: (_) => ref
+                            .read(wakeWordProvider.notifier)
+                            .toggle(),
+                        thumbColor: _activeThumb(AppTheme.softLavender),
+                        trackColor: _activeTrack(AppTheme.softLavender),
+                      ),
+                      SwitchListTile(
                         title: const Text('Notifications',
-                          style: TextStyle(
-                              color: AppTheme.moonWhite, fontSize: 14)),
+                            style: TextStyle(
+                                color: AppTheme.moonWhite, fontSize: 14)),
                         subtitle: const Text('Check-in messages from Mira',
-                          style: TextStyle(
-                              color: AppTheme.textSecondary, fontSize: 12)),
+                            style: TextStyle(
+                                color: AppTheme.textSecondary, fontSize: 12)),
                         value: settings['notifications'] ?? true,
                         onChanged: (v) => ref
                             .read(settingsProvider.notifier)
@@ -136,11 +152,11 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       SwitchListTile(
                         title: const Text('AI Voice Responses',
-                          style: TextStyle(
-                              color: AppTheme.moonWhite, fontSize: 14)),
+                            style: TextStyle(
+                                color: AppTheme.moonWhite, fontSize: 14)),
                         subtitle: const Text('Hear Mira speak during chat',
-                          style: TextStyle(
-                              color: AppTheme.textSecondary, fontSize: 12)),
+                            style: TextStyle(
+                                color: AppTheme.textSecondary, fontSize: 12)),
                         value: settings['aiVoice'] ?? true,
                         onChanged: (v) => ref
                             .read(settingsProvider.notifier)
@@ -150,11 +166,11 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       SwitchListTile(
                         title: const Text('Sound Effects',
-                          style: TextStyle(
-                              color: AppTheme.moonWhite, fontSize: 14)),
+                            style: TextStyle(
+                                color: AppTheme.moonWhite, fontSize: 14)),
                         subtitle: const Text('Chimes and ringtones',
-                          style: TextStyle(
-                              color: AppTheme.textSecondary, fontSize: 12)),
+                            style: TextStyle(
+                                color: AppTheme.textSecondary, fontSize: 12)),
                         value: settings['soundEffects'] ?? true,
                         onChanged: (v) => ref
                             .read(settingsProvider.notifier)
@@ -168,7 +184,7 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
 
                 // Data management section
-                _SectionLabel(label: 'Data'),
+                const _SectionLabel(label: 'Data'),
                 const SizedBox(height: 10),
                 _GlassCard(
                   child: Column(
@@ -218,9 +234,9 @@ class SettingsScreen extends ConsumerWidget {
                   height: 54,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(28),
-                    color: AppTheme.errorRed.withOpacity(0.12),
+                    color: AppTheme.errorRed.withValues(alpha: 0.12),
                     border: Border.all(
-                        color: AppTheme.errorRed.withOpacity(0.4)),
+                        color: AppTheme.errorRed.withValues(alpha: 0.4)),
                   ),
                   child: ElevatedButton(
                     onPressed: () {
@@ -233,18 +249,18 @@ class SettingsScreen extends ConsumerWidget {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(28)),
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.logout_rounded,
-                          color: AppTheme.errorRed, size: 18),
-                        const SizedBox(width: 10),
+                        Icon(Icons.logout_rounded,
+                            color: AppTheme.errorRed, size: 18),
+                        SizedBox(width: 10),
                         Text('Sign Out',
-                          style: TextStyle(
-                            color: AppTheme.errorRed,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 2)),
+                            style: TextStyle(
+                                color: AppTheme.errorRed,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 2)),
                       ],
                     ),
                   ),
@@ -253,11 +269,11 @@ class SettingsScreen extends ConsumerWidget {
 
                 // App version footer
                 Center(
-                  child: Text('Mirabel v1.0.0  •  Crafted with Love',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: AppTheme.textSecondary.withOpacity(0.5),
-                      letterSpacing: 1.5))),
+                    child: Text('Mirabel v1.0.0  •  Crafted with Love',
+                        style: TextStyle(
+                            fontSize: 10,
+                            color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                            letterSpacing: 1.5))),
               ],
             ),
           ),
@@ -277,7 +293,7 @@ class SettingsScreen extends ConsumerWidget {
             style: TextStyle(color: AppTheme.moonWhite, fontSize: 16)),
         content: const Text(
             'All messages with the current companion will be permanently '
-            'deleted from the database. This cannot be undone.',
+                'deleted from the database. This cannot be undone.',
             style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
         actions: [
           TextButton(
@@ -307,7 +323,7 @@ class SettingsScreen extends ConsumerWidget {
             style: TextStyle(color: AppTheme.moonWhite, fontSize: 16)),
         content: const Text(
             'Every message with every companion will be permanently deleted '
-            'from the database. This cannot be undone.',
+                'from the database. This cannot be undone.',
             style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
         actions: [
           TextButton(
@@ -337,6 +353,7 @@ class SettingsScreen extends ConsumerWidget {
     }
     try {
       await storage.clearAllCompanionMessages(companionId);
+      if (!context.mounted) return;
       _showToast(context, 'Chat cleared');
     } catch (e) {
       _showToast(context, 'Failed: $e', isError: true);
@@ -351,6 +368,7 @@ class SettingsScreen extends ConsumerWidget {
     }
     try {
       await storage.clearAllChatsForAllCompanions();
+      if (!context.mounted) return;
       _showToast(context, 'All chats cleared');
     } catch (e) {
       _showToast(context, 'Failed: $e', isError: true);
@@ -366,7 +384,7 @@ class SettingsScreen extends ConsumerWidget {
                 color: isError ? AppTheme.errorRed : AppTheme.moonWhite,
                 fontSize: 12)),
         backgroundColor:
-            isError ? Colors.red.withOpacity(0.9) : AppTheme.surfaceDark,
+        isError ? Colors.red.withValues(alpha: 0.9) : AppTheme.surfaceDark,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
       ),
@@ -382,11 +400,11 @@ class _SectionLabel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(label.toUpperCase(),
-        style: TextStyle(
-          fontSize: 10,
-          color: AppTheme.textSecondary.withOpacity(0.7),
-          letterSpacing: 2.5,
-          fontWeight: FontWeight.w500)),
+          style: TextStyle(
+              fontSize: 10,
+              color: AppTheme.textSecondary.withValues(alpha: 0.7),
+              letterSpacing: 2.5,
+              fontWeight: FontWeight.w500)),
     );
   }
 }
